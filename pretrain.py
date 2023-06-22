@@ -14,20 +14,23 @@
 # imports 
 import numpy as np
 import os
+import argparse
+import sys 
+import datetime
 import torch
 import torch.nn
 from torch.utils.data import Dataset
-from transformers import AutoTokenizer
+from transformers import AdamW
 from torch.utils.data import Dataset
 from datasets import load_from_disk
 from sentence_transformers import SentenceTransformer, losses, models, InputExample
-from transformers import AutoModel
 
-class Pretrain_Dataset(Dataset):
+class Prepare_Dataset(Dataset):
     def __init__(self, original_dataset, max_seq_len, use_contrastive_learning=False):
         self.original_dataset = original_dataset
         self.max_seq_len = max_seq_len
         self.use_contrastive_learning = use_contrastive_learning
+        self.new_dataset = list()
         self.data = self.generate_new_dataset()
 
     def __len__(self):
@@ -37,43 +40,65 @@ class Pretrain_Dataset(Dataset):
         return self.data[index]
 
     def generate_new_dataset(self):
-        new_dataset = []
         for a in self.original_dataset:
             start = np.random.randint(0, 100) # following convention of TNT
             for i in range(5900 // self.max_seq_len): # 6000 is max length of seq. in dataset 
                 element = a['sequence'][start + i * self.max_seq_len: start + (i + 1) * self.max_seq_len]
                 if 'N' not in element: # Throw out exmples containing N
                     if self.use_contrastive_learning: # saves as a tuple for contrastive learning 
-                        new_dataset.append(InputExample(texts=[element, element]))
+                        self.new_dataset.append(InputExample(texts=[element, element]))
                     else: # save as a single element for MLM
-                        new_dataset.append(InputExample(texts=[element]))
-        return new_dataset
+                        self.new_dataset.append(InputExample(texts=[element]))
+        return self.new_dataset
 
+# Create the argument parser
+parser = argparse.ArgumentParser(description='Pretrain model')
+parser.add_argument('-b', '--batch_size', type=int, help='The batch size')
+parser.add_argument('-l', '--learning_rate', type=float, help='The learning rate')
+parser.add_argument('-p', '--model_save_path', type=str, help='The model save path')
 
-validation_dataset = load_from_disk("pretrain_hrg_validation.hf")
+# Parse the command line arguments
+args = parser.parse_args()
+
+# Retrieve the values of the command line arguments
+batch_size = args.batch_size
+learning_rate = args.learning_rate
+model_save_path = args.model_save_path
+
+# Check if the command line arguments are provided
+if batch_size is None or learning_rate is None or model_save_path is None:
+    parser.error('Missing command line argument(s), -b batch_size, -l learning_rate, -p out/path/for/trained/model')
+
+# load data
 max_seq_len = 400
 use_cl = True
-pretrain_ds = Pretrain_Dataset(validation_dataset, max_seq_len, use_cl)
-data_loader = torch.utils.data.DataLoader(pretrain_ds, batch_size=32, shuffle=True)
+ds = load_from_disk('/home/pretrain_hrg_train_CL.hf')
+pretrain_ds = Prepare_Dataset(ds, max_seq_len, True)
+data_loader = torch.utils.data.DataLoader(pretrain_ds, batch_size=batch_size, shuffle=True)
 
-model_name = "SpliceBERT.510nt"  # Replace with the path to your custom model
-hf_model = AutoModel.from_pretrained(model_name)
-# Specify the maximum length
-max_len = 400
-# Use Huggingface/transformers model (like BERT, RoBERTa, XLNet, XLM-R) for mapping tokens to embeddings
-word_embedding_model = models.Transformer(model_name, max_seq_length=max_len)
-# Apply mean pooling to get one fixed sized sentence vector
-pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension())
+# define model 
+model_path = "/home/SpliceBERT.510nt/"  
+word_embedding_model = models.Transformer(model_path, max_seq_length=max_seq_len)
+pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
-train_batch_size = 16
-tokenizer = AutoTokenizer.from_pretrained(model_name)
 train_loss = losses.MultipleNegativesRankingLoss(model)
-num_epochs = 1
-eval_steps = 100
-model_save_path = os.getcwd() + '/exp1/'
 
-# fit model 
-model.fit(train_objectives=[(data_loader, train_loss)],
-          epochs=num_epochs,
-          evaluation_steps=eval_steps,
-          output_path=model_save_path)
+# number of epochs 
+num_epochs = 1
+
+# learning rate 
+optimizer_class = AdamW
+optimizer_params =  {'lr': learning_rate}
+
+# fit model
+model.fit(
+    train_objectives=[(data_loader, train_loss)],
+    epochs=num_epochs,
+    optimizer_class=optimizer_class,
+    optimizer_params=optimizer_params,
+    output_path=model_save_path + 'pretrained_model/'
+)
+
+# Mark training as finished
+with open(model_save_path + 'finished_pretrain.txt', 'w') as file:
+    file.write(str(datetime.datetime.now().time()))
