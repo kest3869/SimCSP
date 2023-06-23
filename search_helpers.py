@@ -103,7 +103,7 @@ def pretrain_model(pretrain_dataset, OUT_DIR, bs, lr, max_seq_len):
     )
 
     # mark training as finished
-    torch.save(datetime.datetime.now().time(), PRETRAINED_MODEL + 'finished.pt')
+    torch.save(datetime.datetime.now().time(), OUT_DIR + 'finished.pt')
 
     return PRETRAINED_MODEL
 
@@ -202,7 +202,7 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
     resume = True # used to restart model training from a checkpoint
     learning_rate = 0.00001 # Learning rate for model training 
     wd = 1E-6 # weight decay for model training
-    patience = 5 # num iterations a model will train without improvements to val_auc 
+    patience = 1 # num iterations a model will train without improvements to val_auc 
     splits = list()
     splitter = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=seed)
     for _, inds in splitter.split(np.arange(len(ds)), y=ds.labels):
@@ -342,4 +342,4 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
 
 # END OF CITATION
     # mark training as finished
-    torch.save(datetime.datetime.now().time(), FINETUNED_MODEL + 'finished.pt')
+    torch.save(datetime.datetime.now().time(), FINETUNED_MODEL + 'finished1.pt')
