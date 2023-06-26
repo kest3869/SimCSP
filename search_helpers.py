@@ -21,15 +21,14 @@ from tqdm import tqdm
 
 # Files 
 import load # this is my (Kevin Stull) version of the SpliceBERT code for loading Spliceator data
-from utils import make_directory # modified files to use python instead of cython and placed in cwd
-import search_helpers
-
+from utils import make_directory # modified files to use python instead of cython and placed in cwd    
 
 class Prepare_Dataset(Dataset):
     def __init__(self, original_dataset, max_seq_len, use_contrastive_learning=False):
         self.original_dataset = original_dataset
         self.max_seq_len = max_seq_len
         self.use_contrastive_learning = use_contrastive_learning
+        self.new_dataset = list()
         self.data = self.generate_new_dataset()
 
     def __len__(self):
@@ -39,18 +38,16 @@ class Prepare_Dataset(Dataset):
         return self.data[index]
 
     def generate_new_dataset(self):
-        new_dataset = []
         for a in self.original_dataset:
             start = np.random.randint(0, 100) # following convention of TNT
             for i in range(5900 // self.max_seq_len): # 6000 is max length of seq. in dataset 
                 element = a['sequence'][start + i * self.max_seq_len: start + (i + 1) * self.max_seq_len]
                 if 'N' not in element: # Throw out exmples containing N
                     if self.use_contrastive_learning: # saves as a tuple for contrastive learning 
-                        new_dataset.append(InputExample(texts=[element, element]))
+                        self.new_dataset.append(InputExample(texts=[element, element]))
                     else: # save as a single element for MLM
-                        new_dataset.append(InputExample(texts=[element]))
-        return new_dataset
-    
+                        self.new_dataset.append(InputExample(texts=[element]))
+        return self.new_dataset
 
 def pretrain_model(pretrain_dataset, OUT_DIR, bs, lr, max_seq_len):
     '''
@@ -63,20 +60,28 @@ def pretrain_model(pretrain_dataset, OUT_DIR, bs, lr, max_seq_len):
     - PRETRAINED_MODEL : the path to the pre-trained model  
     '''
 
-    # skip if already completed 
+    # make path
     PRETRAINED_MODEL = OUT_DIR + 'pretrained/'
-    if os.path.exists(PRETRAINED_MODEL + 'finished.pt'):
-        return PRETRAINED_MODEL
-    # make the directory if it does not exist 
+    # make directory if it does not exist 
     if not os.path.exists(PRETRAINED_MODEL):
         os.makedirs(PRETRAINED_MODEL)
+    # Create a logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(OUT_DIR + 'pretrain.log')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    # skip if already completed 
+    if os.path.exists(PRETRAINED_MODEL + 'finished.pt'):
+        logger.info("Found Pretrained: Skipping Pretrain")
+        return PRETRAINED_MODEL
+    # start time 
+    st = datetime.datetime.now().time()
+    # save start time of fitting 
+    logger.info("start time:{st}".format(st=st))
 
     # load data 
-    '''
-    dataset = load_from_disk(PRETRAIN_DATASET)
-    use_cl = True
-    pretrain_ds = Prepare_Dataset(dataset, max_seq_len, use_cl)
-    '''
     data_loader = torch.utils.data.DataLoader(pretrain_dataset, batch_size=bs, shuffle=True)
     
     # define model 
@@ -102,8 +107,23 @@ def pretrain_model(pretrain_dataset, OUT_DIR, bs, lr, max_seq_len):
         output_path=PRETRAINED_MODEL
     )
 
+    # Save hyperparameter info to the logger
+    metadata = {
+        'learning_rate': lr,
+        'batch_size': bs,
+        'num_epochs': 1,
+        'optimizer': 'AdamW',
+        'base model': model_path,
+        'loss':'MultipleNegativeRankings',
+        'outdir':OUT_DIR,
+        'pretrained_model':PRETRAINED_MODEL,
+        'number examples:':len(pretrain_dataset),
+        'time':datetime.datetime.now().time()
+    }
+
     # mark training as finished
     torch.save(datetime.datetime.now().time(), OUT_DIR + 'finished.pt')
+    logger.info('Finished with hyperparameters: %s', metadata)
 
     return PRETRAINED_MODEL
 
@@ -125,7 +145,7 @@ def test_model(model: AutoModelForSequenceClassification, loader: DataLoader):
     else:
         device = torch.device("cpu")
     
-    # not gradient computations needed
+    # no gradient computations needed
     model.eval()
     pred, true = list(), list()
     for it, (ids, mask, label) in enumerate(tqdm(loader, desc="predicting", total=len(loader))):
@@ -155,14 +175,29 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
 # Checks before training
     # output directory 
     FINETUNED_MODEL = OUT_DIR + '/finetuned/' 
-    # skip if already completed 
-    if os.path.exists(FINETUNED_MODEL + 'finished.pt'):
-        return FINETUNED_MODEL
+
     # if OUT_DIR does not exist at all, create it
     if not os.path.exists(FINETUNED_MODEL):
         os.makedirs(FINETUNED_MODEL)
-    # Set the logging level to suppress output
-    logging.getLogger("transformers").setLevel(logging.ERROR)
+
+    # Create a logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(OUT_DIR + 'finetune.log')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # skip if already completed 
+    if os.path.exists(FINETUNED_MODEL + 'finished1.pt'):
+        logger.info("Found Model: Skipping")
+        return FINETUNED_MODEL
+    # start time 
+    st = datetime.datetime.now().time()
+    # save start time of fitting 
+    logger.info("start time:{st}".format(st=st))
+    # Set the logging level to DEBUG to suppress output from transformers
+    logging.getLogger("transformers").setLevel(logging.DEBUG)
 
 # Get Device
     # set value for device
@@ -170,6 +205,9 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
+    # save device used
+    logger.info(device)
+
 
 # Load Dataset 
     # load tokenizer
@@ -183,14 +221,16 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
     # Specify the maximum length
     max_len = 400
     # Load dataset using class from load.py file 
-
     ds = load.SpliceatorDataset(
         positive=positive_files, 
         negative=negative_files, 
         tokenizer=tokenizer, 
-        max_len=max_len
+        max_len=max_len,
+        remove_half=True # added by author Kevin Stull 
     )
-
+    ds_len = len(ds)
+    logger.info("Remove_half: {remove_half}".format(remove_half=True))
+    logger.info("New length: {ds_len}".format(ds_len=ds_len))
 
 # KFold Splitting
     # Hyperparameters (all parts of training)
@@ -199,12 +239,13 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
     num_train_epochs= 200 # Max number of training epochs for each model 
     bs = 16 # batch size used to train the model 
     nw = 4 # number of workers used for dataset construction 
-    resume = True # used to restart model training from a checkpoint
+    resume = False # used to restart model training from a checkpoint
     learning_rate = 0.00001 # Learning rate for model training 
     wd = 1E-6 # weight decay for model training
     patience = 1 # num iterations a model will train without improvements to val_auc 
     splits = list()
     splitter = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=seed)
+
     for _, inds in splitter.split(np.arange(len(ds)), y=ds.labels):
         splits.append(inds)
     best_auc = -1
@@ -216,6 +257,11 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
         epoch_test_auc = list()
         epoch_test_f1 = list() 
         for fold in range(num_folds):
+
+            # added by author Kevin Stull 
+            if fold not in [0, 1]:
+                continue
+
             # setup folder 
             fold_outdir = make_directory(os.path.join(FINETUNED_MODEL, "fold{}".format(fold)))
             ckpt = os.path.join(fold_outdir, "checkpoint.pt")
@@ -310,9 +356,7 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
             epoch_test_auc.append(test_auc)
             epoch_test_f1.append(test_f1)
 
-
 ################# 
-
             # Added by Author (Kevin Stull) For Convinience
             torch.save((val_f1, val_auc), os.path.join(fold_outdir, "val_metrics.pt"))
             torch.save((test_f1, test_auc), os.path.join(fold_outdir, "test_metrics.pt"))
@@ -332,14 +376,34 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
             best_auc = np.mean(epoch_val_auc)
             best_epoch = epoch
             for fold in range(10):
+
+            # added by author Kevin Stull 
+                if fold not in [0, 1]:
+                    continue
                 ckpt = fold_ckpt[fold]
                 shutil.copy2(ckpt, "{}.best_model.pt".format(ckpt))
+                logger.info("New best for fold {fold}: {val_metrics}".format(fold=fold, val_metrics=(val_f1, val_auc)))
             wait = 0
         else:
             wait += 1
             if wait >= patience:
                 break
-
 # END OF CITATION
+
+    # save info for logger 
+    metadata = {
+        'number of folds':num_folds,
+        'seed':seed,
+        'batch size':bs,
+        'resume':resume,
+        'learning rate':learning_rate,
+        'weight decay':wd,
+        'patience':patience,
+        'num folds used':2,
+        'time':datetime.datetime.now().time()
+    }
+
     # mark training as finished
-    torch.save(datetime.datetime.now().time(), FINETUNED_MODEL + 'finished1.pt')
+    torch.save(metadata, FINETUNED_MODEL + 'finished1.pt')
+    # save metdata
+    logger.info('Finished with hyperparameters: %s', metadata)

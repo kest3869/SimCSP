@@ -28,6 +28,7 @@ import torch.nn
 from torch.utils.data import Dataset
 from transformers import BertTokenizer, AutoTokenizer
 from torch.nn.utils.rnn import pad_sequence
+import random
 
 # Optional 
 import pickle
@@ -49,6 +50,7 @@ class SpliceatorDataset(Dataset):
     # group : species of origin
     # label : 1 contains splice site, 0 does not contain splice site 
     # sequences : list of DNA sequences (accociated by order with label)
+    # remove_half: optional argument to randomly reduce dataset size by half (Added by Kevin Stull)
 
     # process: given filepaths, stores data in class 
     # __getitem__ : given index returns input_id, mask, label 
@@ -58,7 +60,7 @@ class SpliceatorDataset(Dataset):
     # input_ids : the tokenized version of the DNA sequence
     # mask : binary padded mask where 1's represent normal input and 0 represents masked input
 
-    def __init__(self, positive, negative, tokenizer: BertTokenizer, max_len: int):
+    def __init__(self, positive, negative, tokenizer: BertTokenizer, max_len: int, remove_half: bool = False):
         super().__init__()
         self.max_len = max_len
         self.positive = positive if isinstance(positive, list) else [positive]
@@ -68,7 +70,17 @@ class SpliceatorDataset(Dataset):
         self.groups = list()
         self.sequences = list()
         self.process()
+        if remove_half:
+            self.remove_half_samples()
 
+    def remove_half_samples(self):
+        total_samples = len(self.labels)
+        num_samples_to_remove = total_samples // 4
+        indices_to_remove = random.sample(range(total_samples), num_samples_to_remove)
+        
+        self.labels = [label for i, label in enumerate(self.labels) if i not in indices_to_remove]
+        self.groups = [group for i, group in enumerate(self.groups) if i not in indices_to_remove]
+        self.sequences = [sequence for i, sequence in enumerate(self.sequences) if i not in indices_to_remove]
 
     def process(self):
         for label, files in [[1, self.positive],[0, self.negative]]:
@@ -142,7 +154,8 @@ if __name__ == "__main__":
         positive=positive_files, 
         negative=negative_files, 
         tokenizer=tokenizer, 
-        max_len=max_len
+        max_len=max_len,
+        remove_half = True
                                 )
 
     # Access a few elements of the processed data
@@ -151,7 +164,7 @@ if __name__ == "__main__":
     sequences = dataset.sequences
 
     # Inspect the first 5 elements
-    for i in range(22150,22155):
+    for i in range(0,5):
         print("Label:", labels[i])
         print("Group:", groups[i])
         print("Sequence:", sequences[i][:10])
