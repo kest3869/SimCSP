@@ -38,6 +38,7 @@ args = parser.parse_args()
 # Retrieve the values of the command line arguments
 batch_size = args.batch_size
 learning_rate = args.learning_rate
+
 #model_save_path = args.model_save_path
 
 # Set device 
@@ -54,15 +55,19 @@ hp_str = {64:'64', 256:'256', 512:'512',
           1e-5:'1e5', 3e-5:'3e5', 5e-5:'5e5'}
 
 # Load data first 
+
 # dataset = load_from_disk(PRETRAIN_DATASET)
+
 max_seq_len = 400
 use_cl = True
+
 # pretrain_dataset = search_helpers.Prepare_Dataset(dataset, max_seq_len, use_cl)
 
 # Construct OUT_DIR
 OUT_DIR = '/home/search_space/hrg_validation/' + hp_str[batch_size] + '/' + hp_str[learning_rate] + '/'
 
 # Pre-training
+
 # PRETRAINED_MODEL = search_helpers.pretrain_model(pretrain_dataset, OUT_DIR, batch_size, learning_rate, max_seq_len)
 
 PRETRAINED_MODEL = OUT_DIR + 'pretrained/'

@@ -16,14 +16,15 @@ import numpy as np
 import os
 import argparse
 import sys 
+from tqdm import tqdm
 import datetime
 import torch
 import torch.nn
 from torch.utils.data import Dataset
 from transformers import AdamW
-from torch.utils.data import Dataset
 from datasets import load_from_disk
 from sentence_transformers import SentenceTransformer, losses, models, InputExample
+from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
 class Prepare_Dataset(Dataset):
     def __init__(self, original_dataset, max_seq_len, use_contrastive_learning=False):
@@ -72,8 +73,9 @@ if batch_size is None or learning_rate is None or model_save_path is None:
 # load data
 max_seq_len = 400
 use_cl = True
-ds = load_from_disk('/home/pretrain_hrg_train_CL.hf')
+ds = tqdm(load_from_disk('/home/pretrain_hrg_validation.hf'), desc='Loading Raw Train Data')
 pretrain_ds = Prepare_Dataset(ds, max_seq_len, True)
+del ds
 data_loader = torch.utils.data.DataLoader(pretrain_ds, batch_size=batch_size, shuffle=True)
 
 # define model 
@@ -81,10 +83,17 @@ model_path = "/home/SpliceBERT.510nt/"
 word_embedding_model = models.Transformer(model_path, max_seq_length=max_seq_len)
 pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
-train_loss = losses.MultipleNegativesRankingLoss(model)
+train_loss=losses.MultipleNegativesRankingLoss(model)
+
+# define validation model 
+ds_val = tqdm(load_from_disk('/home/pretrain_hrg_test.hf'), desc="Loading Raw Test Data")
+validation_ds = Prepare_Dataset(ds_val, max_seq_len, True)
+del ds_val
+dev_evaluator = EmbeddingSimilarityEvaluator.from_input_examples(validation_ds, batch_size=8, name='hrg-val')
+dev_evaluator(model)
 
 # number of epochs 
-num_epochs = 1
+num_epochs = 15
 
 # learning rate 
 optimizer_class = AdamW
@@ -93,10 +102,12 @@ optimizer_params =  {'lr': learning_rate}
 # fit model
 model.fit(
     train_objectives=[(data_loader, train_loss)],
+    evaluator=dev_evaluator,
     epochs=num_epochs,
+    evaluation_steps=100,
     optimizer_class=optimizer_class,
     optimizer_params=optimizer_params,
-    output_path=model_save_path + 'pretrained_model/'
+    output_path=model_save_path + 'pretrained_model_scrap/'
 )
 
 # Mark training as finished

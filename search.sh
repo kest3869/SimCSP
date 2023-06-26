@@ -7,7 +7,7 @@ log_file="/home/search_log.log"
 exec > >(tee -a "$log_file") 2>&1
 
 # Search_space
-bss=(64 128 256) # batch sizes
+bss=(64 256 512) # batch sizes
 lrs=(1e-5 3e-5 5e-5) # learning rates
 
 # Converts hyper-parameter to string associated with correct directory
@@ -36,6 +36,5 @@ for bs in "${bss[@]}"; do
         # Pretrain a model with the associated learning rate and batch size 
         python search.py --batch_size "$bs" --learning_rate "$lr" --model_save_path "$OUT_DIR"
     done
-    wait 
 done
 
