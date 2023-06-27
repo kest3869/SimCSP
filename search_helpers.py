@@ -1,61 +1,32 @@
 # Libraries
 import os
-import sys 
 import shutil
 import logging
 import datetime
-import gc
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score, f1_score
 import torch
 import torch.nn
-from torch.utils.data import Dataset, DataLoader, Subset 
-from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import DataLoader, Subset 
 import torch.nn.functional as F 
 from torch.cuda.amp import autocast, GradScaler
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, AdamW, BertTokenizer
-from datasets import load_from_disk
-from sentence_transformers import SentenceTransformer, losses, models, InputExample
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, AdamW
+from sentence_transformers import SentenceTransformer, losses, models
 from tqdm import tqdm
 
 # Files 
 import load # this is my (Kevin Stull) version of the SpliceBERT code for loading Spliceator data
 from utils import make_directory # modified files to use python instead of cython and placed in cwd    
 
-class Prepare_Dataset(Dataset):
-    def __init__(self, original_dataset, max_seq_len, use_contrastive_learning=False):
-        self.original_dataset = original_dataset
-        self.max_seq_len = max_seq_len
-        self.use_contrastive_learning = use_contrastive_learning
-        self.new_dataset = list()
-        self.data = self.generate_new_dataset()
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, index):
-        return self.data[index]
-
-    def generate_new_dataset(self):
-        for a in self.original_dataset:
-            start = np.random.randint(0, 100) # following convention of TNT
-            for i in range(5900 // self.max_seq_len): # 6000 is max length of seq. in dataset 
-                element = a['sequence'][start + i * self.max_seq_len: start + (i + 1) * self.max_seq_len]
-                if 'N' not in element: # Throw out exmples containing N
-                    if self.use_contrastive_learning: # saves as a tuple for contrastive learning 
-                        self.new_dataset.append(InputExample(texts=[element, element]))
-                    else: # save as a single element for MLM
-                        self.new_dataset.append(InputExample(texts=[element]))
-        return self.new_dataset
-
-def pretrain_model(pretrain_dataset, OUT_DIR, bs, lr, max_seq_len):
+def pretrain_model(pretrain_dataset, OUT_DIR, num_epochs, bs=512, lr=3e-5, max_seq_len=400):
     '''
     Inputs: 
     - PRETRAIN_DATASET : path to data used for pre-training
     - OUT_DIR : path to location where model is saved
     - batch_size : size of training batch used for Contastive Learning 
     - learning_rate : learning rate during pre-training
+    - num_epochs : the number of epochs of pre-training to perform 
     Output:
     - PRETRAINED_MODEL : the path to the pre-trained model  
     '''
@@ -243,9 +214,14 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
     learning_rate = 0.00001 # Learning rate for model training 
     wd = 1E-6 # weight decay for model training
     patience = 1 # num iterations a model will train without improvements to val_auc 
+    num_folds_used = 5 # number of folds to use in 10 fold cross-validation
+    folds_list = range(num_folds_used) # the list of our used folds 
+
+    # making splits
     splits = list()
     splitter = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=seed)
 
+    # training loop
     for _, inds in splitter.split(np.arange(len(ds)), y=ds.labels):
         splits.append(inds)
     best_auc = -1
@@ -259,7 +235,7 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
         for fold in range(num_folds):
 
             # added by author Kevin Stull 
-            if fold not in [0, 1]:
+            if fold not in folds_list:
                 continue
 
             # setup folder 
@@ -378,7 +354,7 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
             for fold in range(10):
 
             # added by author Kevin Stull 
-                if fold not in [0, 1]:
+                if fold not in folds_list:
                     continue
                 ckpt = fold_ckpt[fold]
                 shutil.copy2(ckpt, "{}.best_model.pt".format(ckpt))
