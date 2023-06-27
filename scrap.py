@@ -1,9 +1,10 @@
 from torch.utils.data import DataLoader, RandomSampler
 from datasets import load_dataset
 from sentence_transformers import SentenceTransformer, InputExample
+from split_spliceator import split_spliceator # splits the dataset for validation during pre-training 
 
 # load cached dataset
-ds = load_dataset('InstaDeepAI/multi_species_genomes', split='train[1%:5%]')
+ds = load_dataset('InstaDeepAI/human_reference_genome', split='validation')
 
 # breaks the input data into 400 nucleotide sequences 
 def chunk(data):
@@ -40,14 +41,14 @@ from transformers import AdamW
 from sentence_transformers import SentenceTransformer, losses, models, InputExample
 
 # hyperparameters
-batch_size = 64
-learning_rate = 0.00003
+batch_size = 512
+learning_rate = 3e-5
 model_save_path = '/home/scrap/'
 max_seq_len = 400
 use_cl = True
 
 # define dataloader
-data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds,num_samples=len(ds)))
+data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds))
 
 # define model 
 model_path = "/home/SpliceBERT.510nt/"  
@@ -55,6 +56,10 @@ word_embedding_model = models.Transformer(model_path, max_seq_length=max_seq_len
 pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 train_loss=losses.MultipleNegativesRankingLoss(model)
+
+# define an evaluator 
+ds_val = split_spliceator(True, model_path)
+
 
 # number of epochs 
 num_epochs = 3
@@ -67,7 +72,7 @@ optimizer_params =  {'lr': learning_rate}
 model.fit(
     train_objectives=[(data_loader, train_loss)],
     epochs=num_epochs,
-    evaluation_steps=100,
+    evaluation_steps=500,
     optimizer_class=optimizer_class,
     optimizer_params=optimizer_params,
     output_path=model_save_path + 'pretrained_model_scrap/'

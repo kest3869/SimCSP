@@ -1,14 +1,14 @@
 # Libraries
 import os
 import shutil
+import numpy as np
 import logging
 import datetime
-import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score, f1_score
 import torch
 import torch.nn
-from torch.utils.data import DataLoader, Subset 
+from torch.utils.data import DataLoader, Subset, RandomSampler
 import torch.nn.functional as F 
 from torch.cuda.amp import autocast, GradScaler
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, AdamW
@@ -16,7 +16,7 @@ from sentence_transformers import SentenceTransformer, losses, models
 from tqdm import tqdm
 
 # Files 
-import load # this is my (Kevin Stull) version of the SpliceBERT code for loading Spliceator data
+from split_spliceator import split_spliceator # splits the dataset for validation during pre-training 
 from utils import make_directory # modified files to use python instead of cython and placed in cwd    
 
 def pretrain_model(pretrain_dataset, OUT_DIR, num_epochs, bs=512, lr=3e-5, max_seq_len=400):
@@ -53,7 +53,11 @@ def pretrain_model(pretrain_dataset, OUT_DIR, num_epochs, bs=512, lr=3e-5, max_s
     logger.info("start time:{st}".format(st=st))
 
     # load data 
-    data_loader = torch.utils.data.DataLoader(pretrain_dataset, batch_size=bs, shuffle=True)
+    data_loader = torch.utils.data.DataLoader(pretrain_dataset, 
+                                              batch_size=bs, 
+                                              shuffle=True, 
+                                              sampler=RandomSampler(pretrain_dataset,
+                                                                    num_samples=len(pretrain_dataset)))
     
     # define model 
     model_path = "/home/SpliceBERT.510nt/"  
@@ -61,9 +65,6 @@ def pretrain_model(pretrain_dataset, OUT_DIR, num_epochs, bs=512, lr=3e-5, max_s
     pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
     model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
     train_loss = losses.MultipleNegativesRankingLoss(model)
-
-    # number of training epochs 
-    num_epochs = 1
  
     # learning rate 
     optimizer_class = AdamW
@@ -183,25 +184,9 @@ def finetune_model(PRETRAINED_MODEL, OUT_DIR):
 # Load Dataset 
     # load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(PRETRAINED_MODEL)
-    # Specify the directory path
-    positive_dir = '/home/spliceator/Training_data/Positive/GS'
-    negative_dir = '/home/spliceator/Training_data/Negative/GS/GS_1'
-    # List all files in the directory
-    positive_files = [os.path.join(positive_dir, file) for file in os.listdir(positive_dir)]
-    negative_files = [os.path.join(negative_dir, file) for file in os.listdir(negative_dir)]
-    # Specify the maximum length
-    max_len = 400
-    # Load dataset using class from load.py file 
-    ds = load.SpliceatorDataset(
-        positive=positive_files, 
-        negative=negative_files, 
-        tokenizer=tokenizer, 
-        max_len=max_len,
-        remove_half=True # added by author Kevin Stull 
-    )
-    ds_len = len(ds)
-    logger.info("Remove_half: {remove_half}".format(remove_half=True))
-    logger.info("New length: {ds_len}".format(ds_len=ds_len))
+
+    # split and load dataset
+    ds = split_spliceator(False, tokenizer)
 
 # KFold Splitting
     # Hyperparameters (all parts of training)

@@ -60,7 +60,7 @@ class SpliceatorDataset(Dataset):
     # input_ids : the tokenized version of the DNA sequence
     # mask : binary padded mask where 1's represent normal input and 0 represents masked input
 
-    def __init__(self, positive, negative, tokenizer: BertTokenizer, max_len: int, remove_half: bool = False):
+    def __init__(self, positive, negative, tokenizer: BertTokenizer, max_len: int):
         super().__init__()
         self.max_len = max_len
         self.positive = positive if isinstance(positive, list) else [positive]
@@ -70,17 +70,6 @@ class SpliceatorDataset(Dataset):
         self.groups = list()
         self.sequences = list()
         self.process()
-        if remove_half:
-            self.remove_half_samples()
-
-    def remove_half_samples(self):
-        total_samples = len(self.labels)
-        num_samples_to_remove = total_samples // 4
-        indices_to_remove = random.sample(range(total_samples), num_samples_to_remove)
-        
-        self.labels = [label for i, label in enumerate(self.labels) if i not in indices_to_remove]
-        self.groups = [group for i, group in enumerate(self.groups) if i not in indices_to_remove]
-        self.sequences = [sequence for i, sequence in enumerate(self.sequences) if i not in indices_to_remove]
 
     def process(self):
         for label, files in [[1, self.positive],[0, self.negative]]:

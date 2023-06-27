@@ -13,10 +13,8 @@ import search_helpers
 parser = argparse.ArgumentParser(description='Pretrain model')
 parser.add_argument('-e', '--epochs', type=int, help='The number of epochs')
 parser.add_argument('-o', '--out_dir', type=str, help='The model save path')
-
 # Parse the command line arguments
 args = parser.parse_args()
-
 # Retrieve the values of the command line arguments
 epochs = args.batch_size
 OUT_DIR = args.model_save_path
@@ -31,7 +29,7 @@ PRETRAINED_MODEL = '/home/SpliceBERT.510nt'
 max_seq_len = 400
 use_cl = True
 # load cached dataset
-ds = load_dataset('InstaDeepAI/multi_species_genomes', split='train[1%:5%]')
+ds = load_dataset('InstaDeepAI/human_reference_genome')
 # breaks the input data into 400 nucleotide sequences 
 def chunk(data):
     chunks = []

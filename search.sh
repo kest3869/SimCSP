@@ -16,7 +16,7 @@ hp_str[3]='3'
 hp_str[5]='5'
 
 # Create parent directory if it doesn't exist
-parent_dir="/home/search_space/msg_train_1_5/"
+parent_dir="/home/search_space/hrg_train/"
 mkdir -p "$parent_dir"
 
 # Search loop
