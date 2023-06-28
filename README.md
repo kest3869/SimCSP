@@ -1,12 +1,9 @@
 Recreates SpliceBERT Results and Runs Small Scale SimCSP
 
 TODO: 
-- add validation to pre-train 
-    - define sentence-transformers dataloader for spliceator dataset
-- re-run experiments with updated pretrain
 - re-create pre-trained embedding visualization
-- implement search_eval performance visualization
 - upload simcsp docker image
+- process, cache, and eda msg_train
 - update midterm report 
 
 IDEAS: 
