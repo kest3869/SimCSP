@@ -1,0 +1,6 @@
+Mounting the filesystem: 
+kevin:home
+
+files have been added to SpliceBERT/examples/scripts
+1) _encode_sequence.py
+2) _sequene_to_kmer_list.py
