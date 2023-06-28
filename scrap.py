@@ -1,7 +1,9 @@
 from torch.utils.data import DataLoader, RandomSampler
 from datasets import load_dataset
 from sentence_transformers import SentenceTransformer, InputExample
-from split_spliceator import split_spliceator # splits the dataset for validation during pre-training 
+import split_spliceator  # splits the dataset for validation during pre-training 
+from transformers import AutoTokenizer
+
 
 # load cached dataset
 ds = load_dataset('InstaDeepAI/human_reference_genome', split='validation')
@@ -39,13 +41,16 @@ import torch.nn
 from torch.utils.data import Dataset
 from transformers import AdamW
 from sentence_transformers import SentenceTransformer, losses, models, InputExample
+from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
 # hyperparameters
-batch_size = 512
-learning_rate = 3e-5
+batch_size = 512 # chosen by expermiment 
+learning_rate = 3e-5 # chosen by epxeriment 
 model_save_path = '/home/scrap/'
 max_seq_len = 400
-use_cl = True
+use_cl = True 
+eval_bs = 64 # turn this down during experiments
+eval_per_epoch = 2 # number of times to evaluate the model per epoch
 
 # define dataloader
 data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds))
@@ -58,8 +63,15 @@ model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 train_loss=losses.MultipleNegativesRankingLoss(model)
 
 # define an evaluator 
-ds_val = split_spliceator(True, model_path)
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+ds_val = split_spliceator.split_spliceator(True, tokenizer)
+ds_prepped = split_spliceator.prep_val_data(ds_val, tokenizer)
+evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_prepped, 
+                                                             batch_size=eval_bs, 
+                                                             name='spliceator_pretrain_split',
+                                                             show_progress_bar=True)
 
+eval_steps = len(ds) // (batch_size * 1) # evaluated the data at the end of every epoch
 
 # number of epochs 
 num_epochs = 3
@@ -71,8 +83,9 @@ optimizer_params =  {'lr': learning_rate}
 # fit model
 model.fit(
     train_objectives=[(data_loader, train_loss)],
+    evaluator=evaluator,
     epochs=num_epochs,
-    evaluation_steps=500,
+    evaluation_steps=eval_steps,
     optimizer_class=optimizer_class,
     optimizer_params=optimizer_params,
     output_path=model_save_path + 'pretrained_model_scrap/'
