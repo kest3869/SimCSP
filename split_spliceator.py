@@ -2,13 +2,14 @@
 import os
 from torch.utils.data import random_split
 import torch
+import random
+from sentence_transformers import InputExample
 
 # files
 import load
 
 # loads, splits, and returns a subset of a spliceator dataset
 def split_spliceator(for_pretrain, tokenizer, rng_seed=42):
-
     '''
     Input: 
     - for_pretrain : boolean value that determines if pre-train or train split is returned 
@@ -46,3 +47,46 @@ def split_spliceator(for_pretrain, tokenizer, rng_seed=42):
 
     return datasets[0] if for_pretrain else datasets[1]
 
+# prepares sentence-transformers compatible version of spliceator dataset
+def prep_val_data(ds, tokenizer, rng_seed=42):
+    '''
+    Input: 
+    - ds : a spliceator dataset (or subset)
+    - tokenizer : torch tokenizer used to encode sequences 
+    - rng_seed : seed used to create the pairs of data points 
+    Output:
+    - new_dataset : list of Sentence-Transformer InputExample objects 
+    '''
+
+    # generate the pairs of indices
+    n = len(ds)  # length of dataset
+    indices = list(range(n))  # indices of dataset
+    random.seed(rng_seed)  # Set the random seed to 42 for reproducibility
+    random.shuffle(indices)  # shuffle the indices randomly
+    if len(indices) % 2 != 0:  # If the length is odd
+        indices.pop(0)  # Remove the first element
+    # generate tuples from the shuffled list 
+    random_pairs = [(indices[i], indices[i+1]) for i in range(0, len(indices), 2)]
+
+    # new "dataset" 
+    new_dataset = []
+
+    # build new dataset
+    for pair in random_pairs:
+        # get seq and label associated with index from ds
+        seq1, _, label1 = ds[pair[0]]
+        seq2, _, label2 = ds[pair[1]]
+        # Sentence Transformers expects an un-tokenized input 
+        seq1 = tokenizer.decode(seq1)
+        seq2 = tokenizer.decode(seq2)
+        # if they have the same label, then they should be considered "similar"
+        if label1 == label2:
+            label = 1 # similar
+        else:
+            label = 0 # NOT similar 
+        # sentence tranformer compatible validation example 
+        new_datapoint = InputExample(texts=[seq1, seq2], label=label)
+        # add to the new dataset
+        new_dataset.append(new_datapoint)
+    
+    return new_dataset

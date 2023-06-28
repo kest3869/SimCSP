@@ -12,71 +12,106 @@
 '''
 
 # imports 
-import numpy as np
-import os
 import argparse
+import logging
+import os
 import sys 
-from tqdm import tqdm
 import datetime
 import torch
 import torch.nn
-from torch.utils.data import Dataset
-from transformers import AdamW
-from datasets import load_from_disk
+from torch.utils.data import DataLoader, RandomSampler
+from datasets import load_dataset
+from transformers import AutoTokenizer, AdamW
+from sentence_transformers import SentenceTransformer, InputExample
 from sentence_transformers import SentenceTransformer, losses, models, InputExample
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
-class Prepare_Dataset(Dataset):
-    def __init__(self, original_dataset, max_seq_len, use_contrastive_learning=False):
-        self.original_dataset = original_dataset
-        self.max_seq_len = max_seq_len
-        self.use_contrastive_learning = use_contrastive_learning
-        self.new_dataset = list()
-        self.data = self.generate_new_dataset()
+# files 
+import split_spliceator  # splits the dataset for validation during pre-training 
 
+# breaks the input data into 400 nucleotide sequences 
+def chunk(data):
+    chunks = []
+    for seq in data["sequence"]:
+        chunks += [seq[i:i + 400] for i in range(0, len(seq), 400)]
+    return {"sequence": chunks}
+
+# wraps Pyarrow dataset in Sentence Transformer class 
+class InputDataset:
+    def __init__(self,seq):
+        self.seq = seq
+        
     def __len__(self):
-        return len(self.data)
+        return len(self.seq)
+    
+    def __getitem__(self, idx):
+        return InputExample(texts=(self.seq[idx],self.seq[idx]))
 
-    def __getitem__(self, index):
-        return self.data[index]
-
-    def generate_new_dataset(self):
-        for a in self.original_dataset:
-            start = np.random.randint(0, 100) # following convention of TNT
-            for i in range(5900 // self.max_seq_len): # 6000 is max length of seq. in dataset 
-                element = a['sequence'][start + i * self.max_seq_len: start + (i + 1) * self.max_seq_len]
-                if 'N' not in element: # Throw out exmples containing N
-                    if self.use_contrastive_learning: # saves as a tuple for contrastive learning 
-                        self.new_dataset.append(InputExample(texts=[element, element]))
-                    else: # save as a single element for MLM
-                        self.new_dataset.append(InputExample(texts=[element]))
-        return self.new_dataset
+# logs callback information during pre-training
+def callbacks(score, epoch, steps):
+    # save information in logger 
+    logger.info({'score':score, 'epoch':epoch, 'steps':steps})
+    return None
 
 # Create the argument parser
 parser = argparse.ArgumentParser(description='Pretrain model')
-parser.add_argument('-b', '--batch_size', type=int, help='The batch size')
-parser.add_argument('-l', '--learning_rate', type=float, help='The learning rate')
+#parser.add_argument('-b', '--batch_size', type=int, help='The batch size')
+#parser.add_argument('-l', '--learning_rate', type=float, help='The learning rate')
 parser.add_argument('-p', '--model_save_path', type=str, help='The model save path')
 
 # Parse the command line arguments
 args = parser.parse_args()
 
 # Retrieve the values of the command line arguments
-batch_size = args.batch_size
-learning_rate = args.learning_rate
-model_save_path = args.model_save_path
+#batch_size = args.batch_size
+#learning_rate = args.learning_rate
+OUT_DIR = args.model_save_path
 
 # Check if the command line arguments are provided
-if batch_size is None or learning_rate is None or model_save_path is None:
-    parser.error('Missing command line argument(s), -b batch_size, -l learning_rate, -p out/path/for/trained/model')
+if OUT_DIR is None:
+    parser.error('Missing command line argument(s), -p out/path/for/trained/model')
 
-# load data
+# make path
+PRETRAINED_MODEL = OUT_DIR + 'pretrained/'
+# make directory if it does not exist 
+if not os.path.exists(PRETRAINED_MODEL):
+    os.makedirs(PRETRAINED_MODEL)
+# Create a logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler(OUT_DIR + 'pretrain.log')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+# skip if already completed 
+if os.path.exists(PRETRAINED_MODEL + 'finished.pt'):
+    logger.info("Found Pretrained: Skipping Pretrain")
+    sys.exit()
+
+# start time 
+st = datetime.datetime.now().time()
+# save start time of fitting 
+logger.info("start time:{st}".format(st=st))
+
+# load cached dataset
+ds = load_dataset('InstaDeepAI/human_reference_genome', split='validation')
+# apply the mapping function to the dataset
+ds = ds.map(chunk, remove_columns=ds.column_names, num_proc=8, batched=True)
+# make it compatible with Sentence Transformers library                            
+ds = InputDataset(ds['sequence'])
+
+# hyperparameters
+batch_size = 512 # chosen by expermiment 
+learning_rate = 3e-5 # chosen by experiment 
+
 max_seq_len = 400
-use_cl = True
-ds = tqdm(load_from_disk('/home/pretrain_hrg_validation.hf'), desc='Loading Raw Train Data')
-pretrain_ds = Prepare_Dataset(ds, max_seq_len, True)
-del ds
-data_loader = torch.utils.data.DataLoader(pretrain_ds, batch_size=batch_size, shuffle=True)
+use_cl = True 
+eval_bs = 64 # turn this down during experiments
+eval_per_epoch = 2 # number of times to evaluate the model per epoch
+
+# define dataloader
+data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds))
 
 # define model 
 model_path = "/home/SpliceBERT.510nt/"  
@@ -85,15 +120,18 @@ pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 train_loss=losses.MultipleNegativesRankingLoss(model)
 
-# define validation model 
-ds_val = tqdm(load_from_disk('/home/pretrain_hrg_test.hf'), desc="Loading Raw Test Data")
-validation_ds = Prepare_Dataset(ds_val, max_seq_len, True)
-del ds_val
-dev_evaluator = EmbeddingSimilarityEvaluator.from_input_examples(validation_ds, batch_size=8, name='hrg-val')
-dev_evaluator(model)
+# define an evaluator 
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+ds_val = split_spliceator.split_spliceator(True, tokenizer)
+ds_prepped = split_spliceator.prep_val_data(ds_val, tokenizer)
+evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_prepped, 
+                                                             batch_size=eval_bs, 
+                                                             name='spliceator_pretrain_split',
+                                                             show_progress_bar=True)
+eval_steps = len(ds) // (batch_size * eval_per_epoch) # evaluate the data at the end of every epoch
 
 # number of epochs 
-num_epochs = 15
+num_epochs = 3
 
 # learning rate 
 optimizer_class = AdamW
@@ -102,14 +140,36 @@ optimizer_params =  {'lr': learning_rate}
 # fit model
 model.fit(
     train_objectives=[(data_loader, train_loss)],
-    evaluator=dev_evaluator,
+    evaluator=evaluator,
     epochs=num_epochs,
-    evaluation_steps=100,
+    evaluation_steps=eval_steps,
     optimizer_class=optimizer_class,
     optimizer_params=optimizer_params,
-    output_path=model_save_path + 'pretrained_model_scrap/'
+    output_path=PRETRAINED_MODEL,
+    use_amp = True,
+    callback = callbacks,
+    checkpoint_path = PRETRAINED_MODEL,
+    checkpoint_save_steps = eval_steps,
+    checkpoint_save_total_limit = num_epochs*eval_per_epoch,
 )
 
-# Mark training as finished
-with open(model_save_path + 'finished_pretrain.txt', 'w') as file:
-    file.write(str(datetime.datetime.now().time()))
+# Save hyperparameter info to the logger
+metadata = {
+    'learning_rate': learning_rate,
+    'batch_size': batch_size,
+    'num_epochs': 1,
+    'optimizer': 'AdamW',
+    'base model': model_path,
+    'loss':'MultipleNegativeRankings',
+    'len(val_ds)': len(ds_val),
+    'bs_val': eval_bs,
+    'outdir':OUT_DIR,
+    'pretrained_model':PRETRAINED_MODEL,
+    'number examples:':len(ds),
+    'time':datetime.datetime.now().time()
+}
+
+# mark training as finished
+torch.save(datetime.datetime.now().time(), OUT_DIR + 'finished.pt')
+logger.info('Finished with hyperparameters: %s', metadata)
+
