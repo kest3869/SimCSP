@@ -1,14 +1,15 @@
-
 Recreates SpliceBERT Results and Runs Small Scale SimCSP
 
-TODO
+TODO: 
+- add validation to pre-train 
+    - define sentence-transformers dataloader for spliceator dataset
+- re-run experiments with updated pretrain
+- re-create pre-trained embedding visualization
+- implement search_eval performance visualization
+- upload simcsp docker image
+- update midterm report 
 
-load_pretrain.py : uses only validation set of human reference genome
-load_spliceator_CL.py : NOT IMPLEMENTED : will convert spliceator dataset to suitable format for CL
-pretrain_CL.py : does not use [CLS] token for classification
-train.py : does not support CL OR multi-gpu training
-test.py : does not support 10 fold cross validation from SpliceBERT
-pretrain_MLM.py : NOT IMPLEMENTED : will train MLM for same number of epochs as CL for comparison
-build github repo
-upload simcsp docker image
-document dataset downloading and directory organization scheme
+IDEAS: 
+- explore supervised CL
+- use a MLM and CL loss function together during pre-train
+- use spliceator for validation during pre-train 
