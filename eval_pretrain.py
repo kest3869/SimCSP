@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # Load the CSV file
 path = '/home/scrap/'
-df = pd.read_csv(path + 'pretrained_model_scrap/eval/similarity_evaluation_spliceator_pretrain_split_results.csv')
+df = pd.read_csv(path + 'pretrained/eval/similarity_evaluation_spliceator_pretrain_split_results.csv')
 
 # Set the x-axis as the epoch column
 x = df['epoch']

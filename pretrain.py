@@ -95,20 +95,18 @@ st = datetime.datetime.now().time()
 logger.info("start time:{st}".format(st=st))
 
 # load cached dataset
-ds = load_dataset('InstaDeepAI/human_reference_genome', split='validation')
+ds = load_dataset('InstaDeepAI/human_reference_genome', split='train')
 # apply the mapping function to the dataset
-ds = ds.map(chunk, remove_columns=ds.column_names, num_proc=8, batched=True)
+ds = ds.map(chunk, remove_columns=ds.column_names, num_proc=4, batched=True)
 # make it compatible with Sentence Transformers library                            
 ds = InputDataset(ds['sequence'])
 
 # hyperparameters
 batch_size = 512 # chosen by expermiment 
 learning_rate = 3e-5 # chosen by experiment 
-
 max_seq_len = 400
 use_cl = True 
-eval_bs = 64 # turn this down during experiments
-eval_per_epoch = 2 # number of times to evaluate the model per epoch
+eval_bs = 8 # turn this down during experiments
 
 # define dataloader
 data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds))
@@ -128,10 +126,10 @@ evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_prepped,
                                                              batch_size=eval_bs, 
                                                              name='spliceator_pretrain_split',
                                                              show_progress_bar=True)
-eval_steps = len(ds) // (batch_size * eval_per_epoch) # evaluate the data at the end of every epoch
+eval_steps = len(ds) // batch_size # evaluate the data at the end of every epoch
 
 # number of epochs 
-num_epochs = 3
+num_epochs = 25
 
 # learning rate 
 optimizer_class = AdamW
@@ -142,7 +140,6 @@ model.fit(
     train_objectives=[(data_loader, train_loss)],
     evaluator=evaluator,
     epochs=num_epochs,
-    evaluation_steps=eval_steps,
     optimizer_class=optimizer_class,
     optimizer_params=optimizer_params,
     output_path=PRETRAINED_MODEL,
@@ -150,7 +147,7 @@ model.fit(
     callback = callbacks,
     checkpoint_path = PRETRAINED_MODEL,
     checkpoint_save_steps = eval_steps,
-    checkpoint_save_total_limit = num_epochs*eval_per_epoch,
+    checkpoint_save_total_limit = num_epochs*2,
 )
 
 # Save hyperparameter info to the logger
@@ -172,4 +169,3 @@ metadata = {
 # mark training as finished
 torch.save(datetime.datetime.now().time(), OUT_DIR + 'finished.pt')
 logger.info('Finished with hyperparameters: %s', metadata)
-
