@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Create parent directory if it doesn't exist
-parent_dir="/home/search_space/hrg_train/"
+parent_dir="/home/search_space/hrg_val_test/"
 mkdir -p "$parent_dir"
 
 # Construct OUT_DIR

@@ -1,38 +1,26 @@
 #!/bin/bash
 
-# Search_space
-bss=(64 256 512) # batch sizes
-lrs=(1e-5 3e-5 5e-5) # learning rates
-
-# Converts hyper-parameter to string associated with correct directory
-declare -A hp_str
-hp_str[64]='64'
-hp_str[256]='256'
-hp_str[512]='512'
-hp_str[1e-5]='1e5'
-hp_str[3e-5]='3e5'
-hp_str[5e-5]='5e5'
+# Define the list of numbers
+numbers=(507 2535 4563 6591 8112 10140 12168 12700)
 
 # Create parent directory if it doesn't exist
-parent_dir="/home/search_space/hrg_train/"
+parent_dir="/home/search_space/hrg_val_test/512/3e5"
 mkdir -p "$parent_dir"
 
-# Search loop
-for bs in "${bss[@]}"; do
-    for lr in "${lrs[@]}"; do
+# Loop over the numbers and run train.py
+for number in "${numbers[@]}"; do
+    # Construct OUT_DIR with the current number
+    OUT_DIR="${parent_dir}/${number}"
 
-        # Construct OUT_DIR
-        OUT_DIR="${parent_dir}${hp_str[$bs]}/${hp_str[$lr]}/"
+    # Create directory if it doesn't exist
+    mkdir -p "$OUT_DIR"
 
-        # Check if the finished_pretrain.txt file exists in the directory
-        if [ -e "${OUT_DIR}finished_train.txt" ]; then
-            echo "Skipping directory: ${OUT_DIR}"
-            continue
-        
-        # Create directory if it doesn't exist
-        mkdir -p "$OUT_DIR"
-        
-        # Pretrain a model with the associated learning rate and batch size 
-        python train.py --model_save_path "$OUT_DIR"
-    done
+    # Log file path with the number
+    log_file="${OUT_DIR}/output_finetune_${number}.log"
+
+    # Set the current number in the PRETRAINED_MODEL path
+    PRETRAINED_MODEL="${parent_dir}/pretrained/$number"
+
+    # Pretrain a model with the associated learning rate and batch size
+    python train.py --out-dir "$OUT_DIR" --pretrained-model "$PRETRAINED_MODEL" > "$log_file" 2>&1
 done

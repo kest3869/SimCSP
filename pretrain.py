@@ -15,15 +15,15 @@
 import argparse
 import logging
 import os
+import gc
 import sys 
 import datetime
 import torch
 import torch.nn
 from torch.utils.data import DataLoader, RandomSampler
-from datasets import load_dataset
+from datasets import concatenate_datasets, load_dataset
 from transformers import AutoTokenizer, AdamW
-from sentence_transformers import SentenceTransformer, InputExample
-from sentence_transformers import SentenceTransformer, losses, models, InputExample
+from sentence_transformers import SentenceTransformer, InputExample, losses, models
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
 # files 
@@ -95,9 +95,15 @@ st = datetime.datetime.now().time()
 logger.info("start time:{st}".format(st=st))
 
 # load cached dataset
-ds = load_dataset('InstaDeepAI/human_reference_genome', split='train')
+ds = load_dataset('InstaDeepAI/human_reference_genome', split='validation')
+ds2 = load_dataset('InstaDeepAI/human_reference_genome', split='test')
+# concatenate the two datasets
+ds = concatenate_datasets([ds, ds2])
+# free the ds2 memory
+del ds2
+gc.collect()
 # apply the mapping function to the dataset
-ds = ds.map(chunk, remove_columns=ds.column_names, num_proc=4, batched=True)
+ds = ds.map(chunk, remove_columns=ds.column_names, batched=True)
 # make it compatible with Sentence Transformers library                            
 ds = InputDataset(ds['sequence'])
 
@@ -122,6 +128,9 @@ train_loss=losses.MultipleNegativesRankingLoss(model)
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 ds_val = split_spliceator.split_spliceator(True, tokenizer)
 ds_prepped = split_spliceator.prep_val_data(ds_val, tokenizer)
+# free the ds_val memory
+del ds_val
+gc.collect()
 evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_prepped, 
                                                              batch_size=eval_bs, 
                                                              name='spliceator_pretrain_split',
@@ -167,5 +176,5 @@ metadata = {
 }
 
 # mark training as finished
-torch.save(datetime.datetime.now().time(), OUT_DIR + 'finished.pt')
+torch.save(datetime.datetime.now().time(), OUT_DIR + 'finished_pretrain.pt')
 logger.info('Finished with hyperparameters: %s', metadata)

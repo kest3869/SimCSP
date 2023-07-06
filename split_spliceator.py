@@ -1,7 +1,9 @@
 # libraries
 import os
-from torch.utils.data import random_split
 import torch
+from torch.utils.data import random_split, DataLoader
+import numpy as np
+from tqdm import tqdm
 import random
 from sentence_transformers import InputExample
 
@@ -43,9 +45,13 @@ def split_spliceator(for_pretrain, tokenizer, rng_seed=42):
     sub_len = ds_len // 2
 
     # splits the dataset
-    datasets = random_split(ds, [sub_len, sub_len], generator=generator)
+    pretrain_ds, train_ds = random_split(ds, [sub_len, sub_len], generator=generator)
 
-    return datasets[0] if for_pretrain else datasets[1]
+    # process data differently based on destination 
+    if for_pretrain:
+        return pretrain_ds 
+    else:
+        return train_ds
 
 # prepares sentence-transformers compatible version of spliceator dataset
 def prep_val_data(ds, tokenizer, rng_seed=42):
@@ -66,13 +72,13 @@ def prep_val_data(ds, tokenizer, rng_seed=42):
     if len(indices) % 2 != 0:  # If the length is odd
         indices.pop(0)  # Remove the first element
     # generate tuples from the shuffled list 
-    random_pairs = [(indices[i], indices[i+1]) for i in range(0, len(indices), 2)]
+    random_pairs = tqdm([(indices[i], indices[i+1]) for i in range(0, len(indices), 2)], desc='making pairs')
 
     # new "dataset" 
     new_dataset = []
 
     # build new dataset
-    for pair in random_pairs:
+    for pair in tqdm(random_pairs, desc='building new dataset'):
         # get seq and label associated with index from ds
         seq1, _, label1 = ds[pair[0]]
         seq2, _, label2 = ds[pair[1]]
@@ -88,5 +94,19 @@ def prep_val_data(ds, tokenizer, rng_seed=42):
         new_datapoint = InputExample(texts=[seq1, seq2], label=label)
         # add to the new dataset
         new_dataset.append(new_datapoint)
+    # express as numpy array 
+    new_dataset = np.array(new_dataset, dtype=object)
     
     return new_dataset
+
+# takes a torch subset, returns a list of its associated labels 
+def get_labels(subset):
+
+    labels = []
+    # get the labels 
+    for index in tqdm(subset.indices, desc='getting labels'):
+        _, _, label = subset.dataset[index]
+        labels.append(label)
+    # convert to numpy array 
+    labels = np.array(labels)
+    return labels 
