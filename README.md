@@ -26,7 +26,9 @@
 
 ## NOTES: 
 - cite UMAP and leiden algorithm + give more explanation on generation
+- remove the test split from train.py while using spliceator_split.py
 
 ## IDEAS: 
 - explore Sup. CL
 - use a MLM and CL loss function together during pre-train
+- experiment with varied sequence length during contrastive learning

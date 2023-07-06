@@ -51,7 +51,7 @@ mark_loc = (0.5, 0.07)
 mark_size = 8
 fig, ax = plt.subplots()
 ax.text(*loc, "A", transform=ax.transAxes, fontsize=20, fontweight='normal', va='top', ha='right')
-sc.pl.umap(splicebert_ss, color=["label"], ax=ax, title="SpliceBERT", **args)
+sc.pl.umap(splicebert_ss, color=["label"], ax=ax, title="SimCSP", **args)
 nmi_score, nmi_donor, nmi_acceptor = cal_metric_by_group(splicebert_ss.obs["label"], splicebert_ss.obs["leiden"], metric_fun)
 ax.text(*mark_loc, f"NMI(GT/AG)={nmi_donor:.2f}/{nmi_acceptor:.2f}", transform=ax.transAxes, fontsize=mark_size, fontweight='normal', va='top', ha='center')
 ax.set_xlabel("")

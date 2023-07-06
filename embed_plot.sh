@@ -9,7 +9,7 @@ logger_file="${root_dir}/logger_plot.txt"
 exec > >(tee -a "$logger_file") 2>&1
 
 # numbers to generate embeddings for 
-numbers=(2535 4563 6591 8112 10140 12168 12700)
+numbers=(507 2535 4563 6591 8112 10140 12168 12700)
 layers=(0 1 2 3 4 5 6)
 
 for num in "${numbers[@]}"; do
