@@ -116,8 +116,6 @@ fold_ckpt = dict()
 for epoch in range(num_train_epochs):
     epoch_val_auc = list()
     epoch_val_f1 = list()
-    epoch_test_auc = list()
-    epoch_test_f1 = list() 
 
     for fold in range(num_folds):
 
@@ -136,9 +134,8 @@ for epoch in range(num_train_epochs):
         # setup dataset 
             #(uses a 70/10/20) split for model evaluation
         all_inds = splits[fold:] + splits[:fold]
-        train_inds = np.concatenate(all_inds[3:])
+        train_inds = np.concatenate(all_inds[1:])
         val_inds = all_inds[0]
-        test_inds = np.concatenate(all_inds[1:3])
 
         # Loading datasets
         train_loader = DataLoader(
@@ -150,11 +147,6 @@ for epoch in range(num_train_epochs):
         )
         val_loader = DataLoader(
             Subset(ds, indices=val_inds),
-            batch_size=bs,
-            num_workers=nw
-        )
-        test_loader = DataLoader(
-            Subset(ds, indices=test_inds),
             batch_size=bs,
             num_workers=nw
         )
@@ -185,7 +177,7 @@ for epoch in range(num_train_epochs):
                 lr=learning_rate,
                 weight_decay=wd
             )
-            torch.save((train_inds, val_inds, test_inds), "{}/split.pt".format(OUT_DIR))
+            torch.save((train_inds, val_inds), "{}/split.pt".format(OUT_DIR))
             scaler = GradScaler()
             trained_epochs = 0
 
@@ -223,16 +215,11 @@ for epoch in range(num_train_epochs):
         epoch_val_auc.append(val_auc)
         epoch_val_f1.append(val_f1)
 
-        # Testing
-        test_auc, test_f1, test_score, test_label = test_model(model, test_loader)
-        torch.save((test_score, test_label), os.path.join(fold_outdir, "test.pt"))
-
 
 ################# 
 
         # Added by Author (Kevin Stull) For Convinience
         torch.save((epoch_val_f1, epoch_val_auc), os.path.join(fold_outdir, "val_metrics.pt"))
-        torch.save((epoch_test_f1, epoch_test_auc), os.path.join(fold_outdir, "test_metrics.pt"))
 
 ################# 
 
