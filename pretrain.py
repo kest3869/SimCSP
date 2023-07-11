@@ -72,10 +72,10 @@ if OUT_DIR is None:
     parser.error('Missing command line argument(s), -p out/path/for/trained/model')
 
 # make path
-PRETRAINED_MODEL = OUT_DIR + 'pretrained/'
+PRETRAINED_MODEL = OUT_DIR
 # make directory if it does not exist 
-if not os.path.exists(PRETRAINED_MODEL):
-    os.makedirs(PRETRAINED_MODEL)
+if not os.path.exists(PRETRAINED_MODEL + '/checkpoints/'):
+    os.makedirs(PRETRAINED_MODEL + '/checkpoints/')
 # Create a logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -85,7 +85,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 # skip if already completed 
-if os.path.exists(PRETRAINED_MODEL + 'finished.pt'):
+if os.path.exists(PRETRAINED_MODEL + 'finished_pretrain.pt'):
     logger.info("Found Pretrained: Skipping Pretrain")
     sys.exit()
 
@@ -127,6 +127,8 @@ train_loss=losses.MultipleNegativesRankingLoss(model)
 # define an evaluator 
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 ds_val = split_spliceator.split_spliceator(True, tokenizer)
+
+'''
 ds_prepped = split_spliceator.prep_val_data(ds_val, tokenizer)
 # free the ds_val memory
 del ds_val
@@ -136,9 +138,10 @@ evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_prepped,
                                                              name='spliceator_pretrain_split',
                                                              show_progress_bar=True)
 eval_steps = len(ds) // batch_size # evaluate the data at the end of every epoch
+'''
 
 # number of epochs 
-num_epochs = 25
+num_epochs = 5
 
 # learning rate 
 optimizer_class = AdamW
@@ -147,15 +150,13 @@ optimizer_params =  {'lr': learning_rate}
 # fit model
 model.fit(
     train_objectives=[(data_loader, train_loss)],
-    evaluator=evaluator,
     epochs=num_epochs,
     optimizer_class=optimizer_class,
     optimizer_params=optimizer_params,
     output_path=PRETRAINED_MODEL,
     use_amp = True,
     callback = callbacks,
-    checkpoint_path = PRETRAINED_MODEL,
-    checkpoint_save_steps = eval_steps,
+    checkpoint_path = PRETRAINED_MODEL+'/checkpoints/',
     checkpoint_save_total_limit = num_epochs*2,
 )
 
@@ -163,7 +164,7 @@ model.fit(
 metadata = {
     'learning_rate': learning_rate,
     'batch_size': batch_size,
-    'num_epochs': 1,
+    'num_epochs': num_epochs,
     'optimizer': 'AdamW',
     'base model': model_path,
     'loss':'MultipleNegativeRankings',
@@ -172,7 +173,7 @@ metadata = {
     'outdir':OUT_DIR,
     'pretrained_model':PRETRAINED_MODEL,
     'number examples:':len(ds),
-    'time':datetime.datetime.now().time()
+    'finished at time':datetime.datetime.now().time()
 }
 
 # mark training as finished

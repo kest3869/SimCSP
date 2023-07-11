@@ -21,13 +21,6 @@ import logging
 import split_spliceator  # splits the dataset for validation during pre-training 
 from utils import make_directory # modified files to use python instead of cython and placed in cwd
 
-# Optional 
-import pandas as pd
-from torch import Tensor
-import torch.nn as nn
-from torch.utils.data import Dataset
-from transformers import AutoConfig
-
 # Test Function
 @torch.no_grad()
 @autocast()
@@ -66,15 +59,20 @@ args = parser.parse_args()
 
 # Retrieve the values of the command line argument
 OUT_DIR = args.out_dir
-TRAIN_MODEL = args.pretrained_model
+PRETRAINED_MODEL = args.pretrained_model
 
 # Create a logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-file_handler = logging.FileHandler(OUT_DIR + 'fine-tune.log')
+file_handler = logging.FileHandler(OUT_DIR + 'finetune.log')
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
+
+# skip if already completed 
+if os.path.exists(PRETRAINED_MODEL + 'finished_finetune.pt'):
+    logger.info("Found finetuned: Skipping finetune!")
+    sys.exit()
 
 # Get device
 # Check for CPU or GPU
@@ -85,11 +83,8 @@ else:
 # Display device being used for train.py
 logger.info(f"Using {device}")
 
-# Load Dataset 
-# Set the path to the folder of pre-trained SpliceBERT
-SPLICEBERT_PATH = TRAIN_MODEL
 # load tokenizer
-tokenizer = AutoTokenizer.from_pretrained(SPLICEBERT_PATH)
+tokenizer = AutoTokenizer.from_pretrained(PRETRAINED_MODEL)
 # Specify the maximum length
 max_len = 400
 # Load dataset using class from load.py file 
@@ -101,7 +96,6 @@ labels = split_spliceator.get_labels(ds)
 num_folds = 10 # K in StratifiedKFold
 seed = 42 # Random seed for StratifiedKFold
 num_train_epochs= 200 # Max number of training epochs for each model 
-out_dir = OUT_DIR + '/trained_models/' # output directory for results of train.py
 bs = 16 # batch size used to train the model 
 nw = 4 # number of workers used for dataset construction 
 resume = False # used to restart model training from a checkpoint
@@ -135,7 +129,7 @@ for epoch in range(num_train_epochs):
         # END ADDED CODE 
 
         # setup folder 
-        fold_outdir = make_directory(os.path.join(out_dir, "fold{}".format(fold)))
+        fold_outdir = make_directory(os.path.join(OUT_DIR, "fold{}".format(fold)))
         ckpt = os.path.join(fold_outdir, "checkpoint.pt")
         fold_ckpt[fold] = ckpt
 
@@ -171,7 +165,7 @@ for epoch in range(num_train_epochs):
             if epoch > 0:
                 del model, optimizer, scaler
             d = torch.load(ckpt)
-            model = AutoModelForSequenceClassification.from_pretrained(SPLICEBERT_PATH, num_labels=1).to(device)
+            model = AutoModelForSequenceClassification.from_pretrained(PRETRAINED_MODEL, num_labels=1).to(device)
             model.load_state_dict(d["model"])
             optimizer = torch.optim.AdamW(
                 model.parameters(),
@@ -185,13 +179,13 @@ for epoch in range(num_train_epochs):
                 trained_epochs = d.get("epoch", -1) + 1
         # New model 
         else: 
-            model = AutoModelForSequenceClassification.from_pretrained(SPLICEBERT_PATH, num_labels=1).to(device)
+            model = AutoModelForSequenceClassification.from_pretrained(PRETRAINED_MODEL, num_labels=1).to(device)
             optimizer = torch.optim.AdamW(
                 model.parameters(),
                 lr=learning_rate,
                 weight_decay=wd
             )
-            torch.save((train_inds, val_inds, test_inds), "{}/split.pt".format(out_dir))
+            torch.save((train_inds, val_inds, test_inds), "{}/split.pt".format(OUT_DIR))
             scaler = GradScaler()
             trained_epochs = 0
 
@@ -232,15 +226,13 @@ for epoch in range(num_train_epochs):
         # Testing
         test_auc, test_f1, test_score, test_label = test_model(model, test_loader)
         torch.save((test_score, test_label), os.path.join(fold_outdir, "test.pt"))
-        epoch_test_auc.append(test_auc)
-        epoch_test_f1.append(test_f1)
 
 
 ################# 
 
         # Added by Author (Kevin Stull) For Convinience
-        torch.save((val_f1, val_auc), os.path.join(fold_outdir, "val_metrics.pt"))
-        torch.save((test_f1, test_auc), os.path.join(fold_outdir, "test_metrics.pt"))
+        torch.save((epoch_val_f1, epoch_val_auc), os.path.join(fold_outdir, "val_metrics.pt"))
+        torch.save((epoch_test_f1, epoch_test_auc), os.path.join(fold_outdir, "test_metrics.pt"))
 
 ################# 
 
@@ -268,6 +260,7 @@ for epoch in range(num_train_epochs):
         if wait >= patience:
             break
 
+
 # Save hyperparameter info to the logger
 metadata = {
     'learning_rate': learning_rate,
@@ -277,7 +270,7 @@ metadata = {
     'loss':'Accuracy',
     'len(ds)': len(ds),
     'outdir':OUT_DIR,
-    'pretrained_model':TRAIN_MODEL,
+    'pretrained_model_path':PRETRAINED_MODEL,
     'number examples:':len(ds),
     'time':datetime.datetime.now().time()
     }

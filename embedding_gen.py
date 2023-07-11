@@ -95,12 +95,12 @@ class FiexedBedData(Dataset):
 # command line
 parser = argparse.ArgumentParser(description='Generate UMAP data for evaluating models.')
 parser.add_argument('--model', type=str, help='Path to the model')
-parser.add_argument('--bed', type=str, help='Path to the bed file')
+# parser.add_argument('--bed', type=str, help='Path to the bed file')
 parser.add_argument('--out_dir', type=str, help='Output directory')
 parser.add_argument('--only_get_last_layer', action='store_true', help='Flag for only getting the last layer')
 args = parser.parse_args()
 model = args.model
-bed = args.bed
+# bed = args.bed
 out_dir = args.out_dir
 only_get_last_layer = args.only_get_last_layer
 
@@ -115,6 +115,7 @@ logger.addHandler(file_handler)
 
 # filepaths 
 genome = '/home/data/hg19.fa'
+bed = "/home/data/hg19.ss-motif.for_umap.bed.gz"
 label = os.path.basename(bed)
 output = out_dir + label
 
