@@ -1,96 +1,49 @@
-from torch.utils.data import DataLoader, RandomSampler
-from datasets import load_dataset
-from sentence_transformers import SentenceTransformer, InputExample
-import split_spliceator  # splits the dataset for validation during pre-training 
-from transformers import AutoTokenizer
 
+# practice using StratifiedKFold, Subset, and train_test_split
 
-# load cached dataset
-ds = load_dataset('InstaDeepAI/human_reference_genome', split='validation')
-
-# breaks the input data into 400 nucleotide sequences 
-def chunk(data):
-    chunks = []
-    for seq in data["sequence"]:
-        chunks += [seq[i:i + 400] for i in range(0, len(seq), 400)]
-    return {"sequence": chunks}
-
-# apply the mapping function to the dataset
-ds = ds.map(chunk, remove_columns=ds.column_names, num_proc=8, batched=True)
-
-# wraps Pyarrow dataset in Sentence Transformer class 
-class InputDataset:
-    def __init__(self,seq):
-        self.seq = seq
-        
-    def __len__(self):
-        return len(self.seq)
-    
-    def __getitem__(self, idx):
-        return InputExample(texts=(self.seq[idx],self.seq[idx]))
-
-# make it compatible with Sentence Transformers library                            
-ds = InputDataset(ds['sequence'])
-
-####### TESTING WITH SimCSP CODE ##########
-# imports 
-from tqdm import tqdm
-import datetime
+# libraries
+import os
 import torch
-import torch.nn
-from torch.utils.data import Dataset
-from transformers import AdamW
-from sentence_transformers import SentenceTransformer, losses, models, InputExample
-from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
+from transformers import AutoTokenizer
+from sklearn.model_selection import StratifiedKFold
+from torch.utils.data import DataLoader, Subset 
+# files
+import load
 
-# hyperparameters
-batch_size = 512 # chosen by expermiment 
-learning_rate = 3e-5 # chosen by epxeriment 
-model_save_path = '/home/scrap/'
-max_seq_len = 400
-use_cl = True 
-eval_bs = 64 # turn this down during experiments
-eval_per_epoch = 2 # number of times to evaluate the model per epoch
 
-# define dataloader
-data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds))
-
-# define model 
-model_path = "/home/SpliceBERT.510nt/"  
-word_embedding_model = models.Transformer(model_path, max_seq_length=max_seq_len)
-pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
-model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
-train_loss=losses.MultipleNegativesRankingLoss(model)
-
-# define an evaluator 
-tokenizer = AutoTokenizer.from_pretrained(model_path)
-ds_val = split_spliceator.split_spliceator(True, tokenizer)
-ds_prepped = split_spliceator.prep_val_data(ds_val, tokenizer)
-evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_prepped, 
-                                                             batch_size=eval_bs, 
-                                                             name='spliceator_pretrain_split',
-                                                             show_progress_bar=True)
-
-eval_steps = len(ds) // (batch_size * 1) # evaluated the data at the end of every epoch
-
-# number of epochs 
-num_epochs = 3
-
-# learning rate 
-optimizer_class = AdamW
-optimizer_params =  {'lr': learning_rate}
-
-# fit model
-model.fit(
-    train_objectives=[(data_loader, train_loss)],
-    evaluator=evaluator,
-    epochs=num_epochs,
-    evaluation_steps=eval_steps,
-    optimizer_class=optimizer_class,
-    optimizer_params=optimizer_params,
-    output_path=model_save_path + 'pretrained_model_scrap/'
+# Load Dataset
+# Positive and Negative paths
+positive_dir = '/home/data/spliceator/Training_data/Positive/GS'
+negative_dir = '/home/data/spliceator/Training_data/Negative/GS/GS_1'
+# List all files in the directory
+positive_files = [os.path.join(positive_dir, file) for file in os.listdir(positive_dir)]
+negative_files = [os.path.join(negative_dir, file) for file in os.listdir(negative_dir)]
+# Specify the maximum length
+max_len = 400
+tokenizer = AutoTokenizer.from_pretrained('/home/data/tokenizer_setup')
+# Load dataset using class from load.py file
+ds = load.SpliceatorDataset(
+    positive=positive_files,
+    negative=negative_files,
+    tokenizer=tokenizer,
+    max_len=max_len
 )
 
-# Mark training as finished
-with open(model_save_path + 'finished_pretrain.txt', 'w') as file:
-    file.write(str(datetime.datetime.now().time()))
+# create a 5-fold cross validator 
+skf = StratifiedKFold(n_splits=5, shuffle=True)
+# generate folds for dataset
+folds = skf.split(ds.sequences, ds.labels)
+# list to save the folds
+fold_ind = []
+# print the folds 
+for fold in folds:
+    print(fold)
+    fold_ind.append(fold)
+# save the folds 
+torch.save(fold_ind, '/home/local_files/scrap/folds.pt')
+print('save and load')
+# load the folds
+test = torch.load('/home/local_files/scrap/folds.pt')
+# print the loaded folds
+for fold in test:
+    print(fold[False], fold[True])

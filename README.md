@@ -1,34 +1,38 @@
 # Recreates SpliceBERT Results and Runs Small Scale SimCSP
 
 ## TODO: 
-- create exp. 2 results plots
-- update report with exp. 2 results 
-- implement remaining metrics 
-- evaluate experiment 2 on remaining metrics 
-- re-run exp. 1 (structure similar to exp. 2)
-- evaluate exp. 2 on all metrics 
-- update report with results of exp. 2
-- begin work on exp. 3
+- finish pipeline.sh 
+    - global 5 fold cross-validation
+        - split_spliceator takes 3 args, for_train, fold_num, seed=42
+        - it handles splitting and folding the dataset and returns the correct subset 
+        - new split should be (70/10/20) (train/val/test)
+    - update embed_gen
+        - add checkpoint system
+    - re-implement scoring evaluation functions 
+        - should save a csv to in results with [pretrain:sccs/f1,finetune:sccs/f1,f1]
+        - should use spliceator_split to get 5-fold cross-validated results 
 
 ## EXPERIMENTS: 
-- 1: vary learning rate and batch size during pre-training
-- 2: vary the amount of pre-training done with a CL loss function 
-- 3: chop off k layers and then pre-train a CL function (need to implement)
+- 1: relationship between f1/sccs in pretrain and fine-tune over time steps=[0,1000, ...]
+    - how is pre-training affecting fine-tuning
+- 2: relationship between f1/sccs in fine-tune and f1_score over time epochs=[0,1,2, ...]
+    - how is fine-tuning affecting model performance 
 
 ## METRICS:
-- SSP auc and f1 (fine-tune only)
-- MLM accuracy (need to implement and pre-train only)
-- SIM (need to implement fine-tune)
-- NMI (need to implement fine-tune) 
+- SCCS : spearman correlation w/ cosine similarity 
+- NMI : normalized mutual information 
 
 ## COMPUTE PRIORITIES: 
-- re-run exp. 1 (MEDIUM) 
+- exp. 1
+- exp. 2
 
 ## NOTES: 
 - cite UMAP and leiden algorithm + give more explanation on generation
-- remove the test split from train.py while using spliceator_split.py
+- hrg uses hg38 and umap plotting uses hg19 but K562 uses hg38 so can only be used w/ msg
+- spliceator num_samples 44,152
 
 ## IDEAS: 
 - explore Sup. CL
 - use a MLM and CL loss function together during pre-train
 - experiment with varied sequence length during contrastive learning
+- experiment with training the classification head with frozen transformer layers 

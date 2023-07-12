@@ -17,8 +17,9 @@ import shutil
 import random
 import torch
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from io import TextIOWrapper
+from typing_extensions import Literal
 
 from _encode_sequence import _encode_sequence
 # from _sequence_to_kmer_list import _fast_seq_to_kmer_list 

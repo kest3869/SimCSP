@@ -23,8 +23,8 @@ def split_spliceator(for_pretrain, tokenizer, rng_seed=42):
 
     # Load Dataset
     # Positive and Negative paths
-    positive_dir = '/home/spliceator/Training_data/Positive/GS'
-    negative_dir = '/home/spliceator/Training_data/Negative/GS/GS_1'
+    positive_dir = '/home/data/spliceator/Training_data/Positive/GS'
+    negative_dir = '/home/data/spliceator/Training_data/Negative/GS/GS_1'
     # List all files in the directory
     positive_files = [os.path.join(positive_dir, file) for file in os.listdir(positive_dir)]
     negative_files = [os.path.join(negative_dir, file) for file in os.listdir(negative_dir)]
@@ -42,7 +42,7 @@ def split_spliceator(for_pretrain, tokenizer, rng_seed=42):
 
     # calculating the lengths 
     ds_len = len(ds)
-    sub_len = ds_len // 2
+    sub_len = ds_len // 2 
 
     # splits the dataset
     pretrain_ds, train_ds = random_split(ds, [sub_len, sub_len], generator=generator)

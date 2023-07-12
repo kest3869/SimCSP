@@ -2,10 +2,10 @@
 # Mandatory
 import os
 import sys 
-import argparse
-import datetime
-import argparse
 import shutil
+import argparse
+import logging
+import datetime
 import numpy as np
 from tqdm import tqdm
 from sklearn.metrics import roc_auc_score, f1_score
@@ -15,11 +15,23 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Subset 
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from torch.cuda.amp import autocast, GradScaler
-import logging
 
 # Files 
 import split_spliceator  # splits the dataset for validation during pre-training 
-from utils import make_directory # modified files to use python instead of cython and placed in cwd
+
+# Environment 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+# used to add tokenizer meta-data to folds for embed_gen.py
+def copy_files(source_folder, destination_folder):
+    # Get the list of files in the source folder
+    file_list = os.listdir(source_folder)
+    
+    # Copy each file from the source folder to the destination folder
+    for file_name in file_list:
+        source_path = os.path.join(source_folder, file_name)
+        destination_path = os.path.join(destination_folder, file_name)
+        shutil.copy2(source_path, destination_path)
 
 # Test Function
 @torch.no_grad()
@@ -70,7 +82,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 # skip if already completed 
-if os.path.exists(PRETRAINED_MODEL + 'finished_finetune.pt'):
+if os.path.exists(OUT_DIR + 'finished_finetune.pt'):
     logger.info("Found finetuned: Skipping finetune!")
     sys.exit()
 
@@ -95,14 +107,14 @@ labels = split_spliceator.get_labels(ds)
 # Hyperparameters (all parts of training)
 num_folds = 10 # K in StratifiedKFold
 seed = 42 # Random seed for StratifiedKFold
-num_train_epochs= 200 # Max number of training epochs for each model 
+num_train_epochs= 1 # Max number of training epochs for each model 
 bs = 16 # batch size used to train the model 
 nw = 4 # number of workers used for dataset construction 
 resume = False # used to restart model training from a checkpoint
 learning_rate = 0.00001 # Learning rate for model training 
 wd = 1E-6 # weight decay for model training
-patience = 2 # num iterations a model will train without improvements to val_auc 
-num_folds_train = 5 # define the number of folds to train (for quicker testing) not in original code 
+patience = 1 # num iterations a model will train without improvements to val_auc 
+num_folds_train = 1 # define the number of folds to train (for quicker testing) not in original code 
 
 splits = list()
 splitter = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=seed)
@@ -127,12 +139,17 @@ for epoch in range(num_train_epochs):
         # END ADDED CODE 
 
         # setup folder 
-        fold_outdir = make_directory(os.path.join(OUT_DIR, "fold{}".format(fold)))
+        if not os.path.exists(os.path.join(OUT_DIR, "fold{}".format(fold))):
+            os.makedirs(os.path.join(OUT_DIR, "fold{}".format(fold)))
+            # add information about tokenizer for embed_gen.py
+            copy_files('/home/data/tokenizer_setup', os.path.join(OUT_DIR, "fold{}".format(fold)))  
+
+        fold_outdir = os.path.join(OUT_DIR, "fold{}".format(fold))
         ckpt = os.path.join(fold_outdir, "checkpoint.pt")
         fold_ckpt[fold] = ckpt
 
         # setup dataset 
-            #(uses a 70/10/20) split for model evaluation
+            #90/10 (train/validation) split for model evaluation
         all_inds = splits[fold:] + splits[:fold]
         train_inds = np.concatenate(all_inds[1:])
         val_inds = all_inds[0]
@@ -215,7 +232,6 @@ for epoch in range(num_train_epochs):
         epoch_val_auc.append(val_auc)
         epoch_val_f1.append(val_f1)
 
-
 ################# 
 
         # Added by Author (Kevin Stull) For Convinience
@@ -230,6 +246,8 @@ for epoch in range(num_train_epochs):
             "scaler": scaler.state_dict(),
             "epoch": epoch
         }, ckpt)
+        # added for gen_embed.py
+        torch.save(model.state_dict(), os.path.join(fold_outdir, "pytorch_model.bin"))
 
 # Checking for new best model 
     if np.mean(epoch_val_auc) > best_auc:
@@ -246,7 +264,6 @@ for epoch in range(num_train_epochs):
         wait += 1
         if wait >= patience:
             break
-
 
 # Save hyperparameter info to the logger
 metadata = {

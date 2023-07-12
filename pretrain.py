@@ -95,13 +95,8 @@ st = datetime.datetime.now().time()
 logger.info("start time:{st}".format(st=st))
 
 # load cached dataset
-ds = load_dataset('InstaDeepAI/human_reference_genome', split='validation')
-ds2 = load_dataset('InstaDeepAI/human_reference_genome', split='test')
-# concatenate the two datasets
-ds = concatenate_datasets([ds, ds2])
-# free the ds2 memory
-del ds2
-gc.collect()
+ds = load_dataset('InstaDeepAI/human_reference_genome', '6kbp', split='train[:10%]')
+
 # apply the mapping function to the dataset
 ds = ds.map(chunk, remove_columns=ds.column_names, batched=True)
 # make it compatible with Sentence Transformers library                            
@@ -115,10 +110,10 @@ use_cl = True
 eval_bs = 8 # turn this down during experiments
 
 # define dataloader
-data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds))
+data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds), num_workers=2)
 
 # define model 
-model_path = "/home/SpliceBERT.510nt/"  
+model_path = "/home/data/SpliceBERT-human.510nt/"  
 word_embedding_model = models.Transformer(model_path, max_seq_length=max_seq_len)
 pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
@@ -141,7 +136,7 @@ eval_steps = len(ds) // batch_size # evaluate the data at the end of every epoch
 '''
 
 # number of epochs 
-num_epochs = 5
+num_epochs = 1
 
 # learning rate 
 optimizer_class = AdamW
@@ -157,7 +152,8 @@ model.fit(
     use_amp = True,
     callback = callbacks,
     checkpoint_path = PRETRAINED_MODEL+'/checkpoints/',
-    checkpoint_save_total_limit = num_epochs*2,
+    checkpoint_save_steps = 1000,
+    checkpoint_save_total_limit = 1,
 )
 
 # Save hyperparameter info to the logger
