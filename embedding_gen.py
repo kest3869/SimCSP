@@ -4,18 +4,21 @@ import sys
 import logging
 import argparse
 import scanpy as sc
+import datetime
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
-new_rc_params = {'text.usetex': False, 'svg.fonttype': 'none' }
-plt.rcParams.update(new_rc_params)
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer, AutoModel
 
 # files 
-from utils import load_fasta, get_reverse_strand, encode_sequence, auto_open
+from utils import load_fasta, get_reverse_strand, auto_open
+
+# environment 
+new_rc_params = {'text.usetex': False, 'svg.fonttype': 'none' }
+plt.rcParams.update(new_rc_params)
 
 # functions from fetch_embedding.py
 ONEHOT = np.concatenate((
@@ -23,15 +26,7 @@ ONEHOT = np.concatenate((
     np.eye(4),
 )).astype(np.int8)
 
-# not used 
-def encode_dnabert(seq: str, k: int):
-    seq_new = list()
-    N = len(seq)
-    seq = "N" * (k//2) + seq.upper() + "N" * k
-    for i in range(k//2, N + k//2):
-        seq_new.append(seq[i-k//2:i-k//2+k])
-    return ' '.join(seq_new)
-
+# load embed dataset 
 class FiexedBedData(Dataset):
     def __init__(self, bed, seq_len, genome, tokenizer=None, dnabert=None) -> None:
         super().__init__()
@@ -71,13 +66,8 @@ class FiexedBedData(Dataset):
         seq = self.genome[chrom][left:right]
         if strand == '-':
             seq = get_reverse_strand(seq)
-        if self.tokenizer is None:
-            seq = torch.from_numpy(ONEHOT[encode_sequence(seq)])
-        else:
-            if self.dnabert is None:
-                seq = torch.as_tensor(self.tokenizer.encode(' '.join(seq.upper())))
-            else:
-                seq = torch.as_tensor(self.tokenizer.encode(encode_dnabert(seq.upper(), self.dnabert)))
+        seq = torch.as_tensor(self.tokenizer.encode(' '.join(seq.upper())))
+
         return seq, i, j, self.name[index], self.name2[index]
     
     def __len__(self):
@@ -100,9 +90,9 @@ parser.add_argument('--out_dir', type=str, help='Output directory')
 parser.add_argument('--only_get_last_layer', action='store_true', help='Flag for only getting the last layer')
 args = parser.parse_args()
 model = args.model
-# bed = args.bed
 out_dir = args.out_dir
 only_get_last_layer = args.only_get_last_layer
+# bed = args.bed
 
 # logging
 logger = logging.getLogger(__name__)
@@ -113,9 +103,14 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
+# skip if already completed 
+if os.path.exists(out_dir + 'finished_embed_gen.pt'):
+    logger.info("Found embed: Skipping embed_gen")
+    sys.exit()
+
 # filepaths 
-genome = '/home/data/hg19.fa'
-bed = "/home/data/hg19.ss-motif.for_umap.bed.gz"
+genome = '/storage/store/kevin/data/hg19.fa'
+bed = "/storage/store/kevin/data/hg19.ss-motif.for_umap.bed.gz"
 label = os.path.basename(bed)
 output = out_dir + label
 
@@ -123,16 +118,14 @@ output = out_dir + label
 seed = 2023
 skip_donor_acceptor_umap = True
 
-
 # loads model 
 np.random.seed(seed)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 tokenizer = AutoTokenizer.from_pretrained(model)
 model = AutoModel.from_pretrained(model, add_pooling_layer=False, output_hidden_states=True).to(device)
-k = None 
 
 # loads data 
-ds = FiexedBedData(bed, 510, genome, tokenizer, dnabert=k)
+ds = FiexedBedData(bed, 510, genome, tokenizer)
 batch_size = 16
 loader = DataLoader(
     ds, 
@@ -165,7 +158,7 @@ else:
 for h in tqdm(layers, desc="UMAP"):
     adata = sc.AnnData(embedding[:, h, :, :].reshape(embedding.shape[0], -1))
     adata.obs['name'] = ds.name
-    adata.obs['name2'] = ds.name2
+    # adata.obs['name2'] = ds.name2
     adata.obs["label"] = [x.split("|")[-1] for x in ds.name]
     sc.pp.pca(adata, n_comps=128, random_state=0)
     sc.pp.neighbors(adata, use_rep='X_pca')
@@ -198,3 +191,18 @@ for h in tqdm(layers, desc="UMAP"):
     sc.tl.leiden(ag_adata)
     gt_adata.write_h5ad(f"{output}.L{h}.GT.h5ad")
     ag_adata.write_h5ad(f"{output}.L{h}.AG.h5ad")
+
+# collection of metadata from embed_gen
+metadata = {
+    'out_dir' : out_dir,
+    'model_path' : model,
+    'only_get_last_layer' : only_get_last_layer,
+    'genome' : genome,
+    'bed' : bed,
+    'seed' : seed,
+    'skip_donor_acceptor_umap' : skip_donor_acceptor_umap
+}
+
+# mark training as finished
+torch.save(datetime.datetime.now().time(), out_dir + 'finished_embed_gen.pt')
+logger.info('Finished with hyperparameters: %s', metadata)

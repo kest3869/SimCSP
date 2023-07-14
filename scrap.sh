@@ -1,0 +1,18 @@
+python scrap.py --output_dir /storage/store/kevin/local_files/experiments/SpliceBERT-human_MLM_run_2/ \
+    --model_name_or_path /storage/store/kevin/data/SpliceBERT-human.510nt \
+    --dataset_name InstaDeepAI/human_reference_genome \
+    --tokenizer_name /storage/store/kevin/data/tokenizer_setup/ \
+    --do_train True \
+    --learning_rate 0.0001 \
+    --per_device_train_batch_size 8 \
+    --do_eval True \
+    --eval_steps 16 \
+    --max_steps 16 \
+    --per_device_eval_batch_size 8 \
+    --evaluation_strategy steps \
+    --overwrite_output_dir \
+    --cache_dir /storage/store/kevin/data/cache \
+    --max_seq_length 510 \
+    --line_by_line False \
+    --disable_tqdm False \
+    --fp16 True

@@ -1,57 +1,56 @@
 # libraries
-import os
 import torch
-from torch.utils.data import random_split, DataLoader
 import numpy as np
 from tqdm import tqdm
 import random
 from sentence_transformers import InputExample
+from sklearn.model_selection import StratifiedKFold, train_test_split
 
 # files
 import load
 
-# loads, splits, and returns a subset of a spliceator dataset
-def split_spliceator(for_pretrain, tokenizer, rng_seed=42):
+# loads, splits, and returns three list of indices (fold_num, 1)
+def split_spliceator(labels, OUT_DIR, num_folds=5, rng_seed=42):
     '''
     Input: 
-    - for_pretrain : boolean value that determines if pre-train or train split is returned 
-    - toknizer : torch tokenizer used to build the dataset object
-    - rng_seed : allows for deterministic splitting of dataset
+    - OUT_DIR : directory where splits are saved 
+    - labels : list containing labels of dataset    
+    - num_folds : the number of folds to make (DEFAULT=5)
+    - rng_seed : allows for deterministic splitting of dataset (DEFAULT=42)
     Output: 
-    - a spliceator dataset half the size of the original 
+    - train_split, validation_split, test-split : (num_folds, 1) lists each containing indices from original ds 
     '''
 
-    # Load Dataset
-    # Positive and Negative paths
-    positive_dir = '/home/data/spliceator/Training_data/Positive/GS'
-    negative_dir = '/home/data/spliceator/Training_data/Negative/GS/GS_1'
-    # List all files in the directory
-    positive_files = [os.path.join(positive_dir, file) for file in os.listdir(positive_dir)]
-    negative_files = [os.path.join(negative_dir, file) for file in os.listdir(negative_dir)]
-    # Specify the maximum length
-    max_len = 400
-    # Load dataset using class from load.py file
-    ds = load.SpliceatorDataset(
-        positive=positive_files,
-        negative=negative_files,
-        tokenizer=tokenizer,
-        max_len=max_len
-    )
-    # Fixes the rng
-    generator = torch.Generator().manual_seed(rng_seed)
+    # create a 5-fold cross validator 
+    skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=rng_seed)
+    # generate folds for dataset
+        # default behavior: (80/20) : (train/test)
+    folds = skf.split(np.zeros(len(labels)), labels) 
+    # list to save the folds
+    temp_ind = []
+    # get the folds 
+    for fold in folds:
+        temp_ind.append(fold)
+    # holds our folds 
+    train_split = list()
+    validation_split = list()
+    test_split = list()
+    for fold_num in range(num_folds):
+        # split dataset (train/validation/test):(70/10/20)
+        train_ind, validation_ind = train_test_split(temp_ind[fold_num][0], train_size=0.875, random_state=rng_seed)
+        # get test split
+        test_ind = temp_ind[fold_num][1]
+        # save the splits to a list 
+        train_split.append(train_ind)
+        validation_split.append(validation_ind)
+        test_split.append(test_ind)
 
-    # calculating the lengths 
-    ds_len = len(ds)
-    sub_len = ds_len // 2 
+    # save the folds for training 
+    torch.save(train_split, OUT_DIR + 'train_split.pt')
+    torch.save(validation_split, OUT_DIR + 'validation_split.pt')
+    torch.save(test_split, OUT_DIR + 'test_split.pt')
 
-    # splits the dataset
-    pretrain_ds, train_ds = random_split(ds, [sub_len, sub_len], generator=generator)
-
-    # process data differently based on destination 
-    if for_pretrain:
-        return pretrain_ds 
-    else:
-        return train_ds
+    return train_split, validation_split, test_split
 
 # prepares sentence-transformers compatible version of spliceator dataset
 def prep_val_data(ds, tokenizer, rng_seed=42):

@@ -21,19 +21,15 @@ import datetime
 import torch
 import torch.nn
 from torch.utils.data import DataLoader, RandomSampler
-from datasets import concatenate_datasets, load_dataset
-from transformers import AutoTokenizer, AdamW
+from datasets import load_dataset
+from transformers import AdamW
 from sentence_transformers import SentenceTransformer, InputExample, losses, models
-from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
-
-# files 
-import split_spliceator  # splits the dataset for validation during pre-training 
 
 # breaks the input data into 400 nucleotide sequences 
 def chunk(data):
     chunks = []
     for seq in data["sequence"]:
-        chunks += [seq[i:i + 400] for i in range(0, len(seq), 400)]
+        chunks += [seq[i:i + 400] for i in range(0, len(seq), 510)]
     return {"sequence": chunks}
 
 # wraps Pyarrow dataset in Sentence Transformer class 
@@ -63,9 +59,8 @@ parser.add_argument('-p', '--model_save_path', type=str, help='The model save pa
 args = parser.parse_args()
 
 # Retrieve the values of the command line arguments
-#batch_size = args.batch_size
-#learning_rate = args.learning_rate
 OUT_DIR = args.model_save_path
+OUT_DIR += '/pretrained_models/'
 
 # Check if the command line arguments are provided
 if OUT_DIR is None:
@@ -86,7 +81,7 @@ logger.addHandler(file_handler)
 
 # skip if already completed 
 if os.path.exists(PRETRAINED_MODEL + 'finished_pretrain.pt'):
-    logger.info("Found Pretrained: Skipping Pretrain")
+    logger.info("Found Pretrained Model: Skipping Pretrain")
     sys.exit()
 
 # start time 
@@ -95,7 +90,7 @@ st = datetime.datetime.now().time()
 logger.info("start time:{st}".format(st=st))
 
 # load cached dataset
-ds = load_dataset('InstaDeepAI/human_reference_genome', '6kbp', split='train[:10%]')
+ds = load_dataset('InstaDeepAI/human_reference_genome', '6kbp', split='train[:2%]')
 
 # apply the mapping function to the dataset
 ds = ds.map(chunk, remove_columns=ds.column_names, batched=True)
@@ -103,37 +98,21 @@ ds = ds.map(chunk, remove_columns=ds.column_names, batched=True)
 ds = InputDataset(ds['sequence'])
 
 # hyperparameters
-batch_size = 512 # chosen by expermiment 
+batch_size = 256 
 learning_rate = 3e-5 # chosen by experiment 
-max_seq_len = 400
+max_seq_len = 510
 use_cl = True 
 eval_bs = 8 # turn this down during experiments
 
 # define dataloader
-data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds), num_workers=2)
+data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds), num_workers=4)
 
 # define model 
-model_path = "/home/data/SpliceBERT-human.510nt/"  
+model_path = "/storage/store/kevin/data/SpliceBERT-human.510nt/"  
 word_embedding_model = models.Transformer(model_path, max_seq_length=max_seq_len)
 pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 train_loss=losses.MultipleNegativesRankingLoss(model)
-
-# define an evaluator 
-tokenizer = AutoTokenizer.from_pretrained(model_path)
-ds_val = split_spliceator.split_spliceator(True, tokenizer)
-
-'''
-ds_prepped = split_spliceator.prep_val_data(ds_val, tokenizer)
-# free the ds_val memory
-del ds_val
-gc.collect()
-evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_prepped, 
-                                                             batch_size=eval_bs, 
-                                                             name='spliceator_pretrain_split',
-                                                             show_progress_bar=True)
-eval_steps = len(ds) // batch_size # evaluate the data at the end of every epoch
-'''
 
 # number of epochs 
 num_epochs = 1
@@ -153,7 +132,7 @@ model.fit(
     callback = callbacks,
     checkpoint_path = PRETRAINED_MODEL+'/checkpoints/',
     checkpoint_save_steps = 1000,
-    checkpoint_save_total_limit = 1,
+    checkpoint_save_total_limit = 100,
 )
 
 # Save hyperparameter info to the logger
@@ -164,7 +143,6 @@ metadata = {
     'optimizer': 'AdamW',
     'base model': model_path,
     'loss':'MultipleNegativeRankings',
-    'len(val_ds)': len(ds_val),
     'bs_val': eval_bs,
     'outdir':OUT_DIR,
     'pretrained_model':PRETRAINED_MODEL,

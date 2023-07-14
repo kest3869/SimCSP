@@ -9,7 +9,6 @@ import datetime
 import numpy as np
 from tqdm import tqdm
 from sklearn.metrics import roc_auc_score, f1_score
-from sklearn.model_selection import StratifiedKFold
 import torch 
 import torch.nn.functional as F 
 from torch.utils.data import DataLoader, Subset 
@@ -17,7 +16,8 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from torch.cuda.amp import autocast, GradScaler
 
 # Files 
-import split_spliceator  # splits the dataset for validation during pre-training 
+import load # loads the spliceator dataset 
+from split_spliceator import split_spliceator  # splits the dataset and saves the indices 
 
 # Environment 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -26,7 +26,6 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 def copy_files(source_folder, destination_folder):
     # Get the list of files in the source folder
     file_list = os.listdir(source_folder)
-    
     # Copy each file from the source folder to the destination folder
     for file_name in file_list:
         source_path = os.path.join(source_folder, file_name)
@@ -36,8 +35,7 @@ def copy_files(source_folder, destination_folder):
 # Test Function
 @torch.no_grad()
 @autocast()
-def test_model(model: AutoModelForSequenceClassification, loader: DataLoader):
-
+def validate_model(model: AutoModelForSequenceClassification, loader: DataLoader):
     """
     Return:
     auc : float
@@ -45,7 +43,6 @@ def test_model(model: AutoModelForSequenceClassification, loader: DataLoader):
     pred : list
     true : list
     """
-
     model.eval()
     pred, true = list(), list()
     for it, (ids, mask, label) in enumerate(tqdm(loader, desc="predicting", total=len(loader))):
@@ -71,7 +68,9 @@ args = parser.parse_args()
 
 # Retrieve the values of the command line argument
 OUT_DIR = args.out_dir
+OUT_DIR += '/finetuned_models/'
 PRETRAINED_MODEL = args.pretrained_model
+PRETRAINED_MODEL += '/pretrained_models/'
 
 # Create a logger
 logger = logging.getLogger(__name__)
@@ -95,32 +94,39 @@ else:
 # Display device being used for train.py
 logger.info(f"Using {device}")
 
-# load tokenizer
-tokenizer = AutoTokenizer.from_pretrained(PRETRAINED_MODEL)
-# Specify the maximum length
-max_len = 400
-# Load dataset using class from load.py file 
-ds = split_spliceator.split_spliceator(False, tokenizer)
-labels = split_spliceator.get_labels(ds)
-
-# KFold Splitting
 # Hyperparameters (all parts of training)
-num_folds = 10 # K in StratifiedKFold
-seed = 42 # Random seed for StratifiedKFold
-num_train_epochs= 1 # Max number of training epochs for each model 
-bs = 16 # batch size used to train the model 
+num_folds = 2 # K in StratifiedKFold
+seed = np.random.randint(0,1E5) # Random seed for StratifiedKFold and train_test_split
+num_train_epochs = 5 # Max number of training epochs for each model 
+bs = 64 # batch size used to train the model [Default 16]
 nw = 4 # number of workers used for dataset construction 
 resume = False # used to restart model training from a checkpoint
-learning_rate = 0.00001 # Learning rate for model training 
+learning_rate = 1E-5 # Learning rate for model training 
 wd = 1E-6 # weight decay for model training
-patience = 1 # num iterations a model will train without improvements to val_auc 
-num_folds_train = 1 # define the number of folds to train (for quicker testing) not in original code 
+patience = 2 # num iterations a model will train without improvements to val_auc 
+max_len = 400
 
-splits = list()
-splitter = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=seed)
-for _, inds in splitter.split(np.arange(len(ds)), y=labels): # adjusted to work with subset
-    splits.append(inds)
+# load tokenizer
+tokenizer = AutoTokenizer.from_pretrained(PRETRAINED_MODEL)
 
+# Load dataset
+# Positive and Negative paths
+positive_dir = '/storage/store/kevin/data/spliceator/Training_data/Positive/GS'
+negative_dir = '/storage/store/kevin/data/spliceator/Training_data/Negative/GS/GS_1'
+# List all files in the directory
+positive_files = [os.path.join(positive_dir, file) for file in os.listdir(positive_dir)]
+negative_files = [os.path.join(negative_dir, file) for file in os.listdir(negative_dir)]
+# Load dataset using class from load.py file
+ds = load.SpliceatorDataset(
+    positive=positive_files,
+    negative=negative_files,
+    tokenizer=tokenizer,
+    max_len=max_len
+)
+# call split_spliceator to get our splits 
+train_split, validation_split, test_split = split_spliceator(ds.labels, OUT_DIR, num_folds=num_folds, rng_seed=seed)
+
+# used for model evaluation
 best_auc = -1
 best_epoch = -1
 fold_ckpt = dict()
@@ -131,44 +137,34 @@ for epoch in range(num_train_epochs):
 
     for fold in range(num_folds):
 
-    # CODE ADDED BY AUTHOR Kevin STULL 
-        # START ADDED CODE
-        used_folds = range(num_folds_train)
-        if fold not in used_folds:
-            continue
-        # END ADDED CODE 
+        # make paths 
+        fold_outdir = os.path.join(OUT_DIR, "fold{}".format(fold))
 
         # setup folder 
-        if not os.path.exists(os.path.join(OUT_DIR, "fold{}".format(fold))):
-            os.makedirs(os.path.join(OUT_DIR, "fold{}".format(fold)))
+        if not os.path.exists(fold_outdir):
+            os.makedirs(fold_outdir)
             # add information about tokenizer for embed_gen.py
-            copy_files('/home/data/tokenizer_setup', os.path.join(OUT_DIR, "fold{}".format(fold)))  
+            copy_files('/storage/store/kevin/data/tokenizer_setup', os.path.join(fold_outdir))  
 
-        fold_outdir = os.path.join(OUT_DIR, "fold{}".format(fold))
+        # update checkpoint
         ckpt = os.path.join(fold_outdir, "checkpoint.pt")
         fold_ckpt[fold] = ckpt
 
-        # setup dataset 
-            #90/10 (train/validation) split for model evaluation
-        all_inds = splits[fold:] + splits[:fold]
-        train_inds = np.concatenate(all_inds[1:])
-        val_inds = all_inds[0]
-
-        # Loading datasets
+        # Load datasets
         train_loader = DataLoader(
-            Subset(ds, indices=train_inds),
+            Subset(ds, indices=train_split[fold]),
             batch_size=bs,
             shuffle=True,
             drop_last=True,
             num_workers=nw,
         )
         val_loader = DataLoader(
-            Subset(ds, indices=val_inds),
+            Subset(ds, indices=validation_split[fold]),
             batch_size=bs,
             num_workers=nw
         )
 
-# Model Initialization
+# Model initialization/loading
         # Not new model 
         if epoch > 0 or (resume and os.path.exists(ckpt)):
             if epoch > 0:
@@ -194,12 +190,10 @@ for epoch in range(num_train_epochs):
                 lr=learning_rate,
                 weight_decay=wd
             )
-            torch.save((train_inds, val_inds), "{}/split.pt".format(OUT_DIR))
             scaler = GradScaler()
             trained_epochs = 0
-
+        # put model in training mode
         model.train()
-
         # Training
         pbar = tqdm(
             train_loader,
@@ -207,56 +201,61 @@ for epoch in range(num_train_epochs):
             desc="Epoch{}-{}".format(epoch+trained_epochs, fold)
                     )
         epoch_loss = 0
-
         for it, (ids, mask, label) in enumerate(pbar):
             ids, mask, label = ids.to(device), mask.to(device), label.to(device).float()
             optimizer.zero_grad()
             with autocast():
                 logits = model.forward(ids, attention_mask=mask).logits.squeeze(1)
                 loss = F.binary_cross_entropy_with_logits(logits, label).mean()
-            
             scaler.scale(loss).backward() 
             scaler.step(optimizer) 
             scaler.update() 
-
             epoch_loss += loss.item()
-
             # Loss per batch 
             pbar.set_postfix_str("loss/lr={:.4f}/{:.2e}".format(
                 epoch_loss / (it + 1), optimizer.param_groups[-1]["lr"]
             ))
 
         # Validation
-        val_auc, val_f1, val_score, val_label = test_model(model, val_loader)
+        val_auc, val_f1, val_score, val_label = validate_model(model, val_loader)
         torch.save((val_score, val_label), os.path.join(fold_outdir, "val.pt"))
         epoch_val_auc.append(val_auc)
         epoch_val_f1.append(val_f1)
-
-################# 
-
-        # Added by Author (Kevin Stull) For Convinience
         torch.save((epoch_val_f1, epoch_val_auc), os.path.join(fold_outdir, "val_metrics.pt"))
 
-################# 
+        # making a copy of model for evaluation by epoch later
+        epoch_outdir = os.path.join(fold_outdir, "epoch{}".format(epoch))
+        # setup folder 
+        if not os.path.exists(epoch_outdir):
+            os.makedirs(epoch_outdir)
+            # add information about tokenizer for embed_gen.py
+            copy_files('/storage/store/kevin/data/tokenizer_setup', os.path.join(epoch_outdir)) 
+        # make a 2nd checkpoint based on epoch 
+        epoch_ckpt = os.path.join(epoch_outdir, "epoch_checkpoint.pt")
+        # save the checkpoint for metric tracking later 
+        torch.save({
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scaler": scaler.state_dict(),
+            "epoch": epoch
+        }, epoch_ckpt)
+        # additional info for gen_embed.py
+        torch.save(model.state_dict(), os.path.join(epoch_outdir, "pytorch_model.bin"))
 
-        # Save model
+        # Save model for next round of training
         torch.save({
             "model": model.state_dict(),
             "optimizer": optimizer.state_dict(),
             "scaler": scaler.state_dict(),
             "epoch": epoch
         }, ckpt)
-        # added for gen_embed.py
-        torch.save(model.state_dict(), os.path.join(fold_outdir, "pytorch_model.bin"))
 
 # Checking for new best model 
     if np.mean(epoch_val_auc) > best_auc:
         best_auc = np.mean(epoch_val_auc)
         best_epoch = epoch
         logger.info("NEW BEST: " + str(best_auc) + ' at epoch ' + str(best_epoch))
-        for fold in range(10):
-            if fold not in used_folds: # added this since I may not use all the folds 
-                continue
+        for fold in range(num_folds):
             ckpt = fold_ckpt[fold]
             shutil.copy2(ckpt, "{}.best_model.pt".format(ckpt))
             wait = 0
@@ -282,5 +281,3 @@ metadata = {
 # Mark training as finished
 torch.save(datetime.datetime.now().time(), OUT_DIR + 'finished_finetune.pt')
 logger.info('Finished with hyperparameters: %s', metadata)
-
-# END OF CITATION
