@@ -6,9 +6,9 @@ python scrap.py --output_dir /storage/store/kevin/local_files/experiments/Splice
     --learning_rate 0.0001 \
     --per_device_train_batch_size 8 \
     --do_eval True \
-    --eval_steps 16 \
+    --eval_steps 1 \
     --max_steps 16 \
-    --per_device_eval_batch_size 8 \
+    --per_device_eval_batch_size 1 \
     --evaluation_strategy steps \
     --overwrite_output_dir \
     --cache_dir /storage/store/kevin/data/cache \

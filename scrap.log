@@ -139,3 +139,300 @@ xpu_backend=None,
   eval_samples_per_second =     73.094
   eval_steps_per_second   =      5.623
   perplexity              =        nan
+07/14/2023 21:09:47 - WARNING - __main__ - Process rank: 0, device: cuda:0, n_gpu: 2distributed training: True, 16-bits training: True
+07/14/2023 21:09:47 - INFO - __main__ - Training/evaluation parameters TrainingArguments(
+_n_gpu=2,
+adafactor=False,
+adam_beta1=0.9,
+adam_beta2=0.999,
+adam_epsilon=1e-08,
+auto_find_batch_size=False,
+bf16=False,
+bf16_full_eval=False,
+data_seed=None,
+dataloader_drop_last=False,
+dataloader_num_workers=0,
+dataloader_pin_memory=True,
+ddp_backend=None,
+ddp_bucket_cap_mb=None,
+ddp_find_unused_parameters=None,
+ddp_timeout=1800,
+debug=[],
+deepspeed=None,
+disable_tqdm=False,
+do_eval=True,
+do_predict=False,
+do_train=True,
+eval_accumulation_steps=None,
+eval_delay=0,
+eval_steps=16,
+evaluation_strategy=steps,
+fp16=True,
+fp16_backend=auto,
+fp16_full_eval=False,
+fp16_opt_level=O1,
+fsdp=[],
+fsdp_config={'fsdp_min_num_params': 0, 'xla': False, 'xla_fsdp_grad_ckpt': False},
+fsdp_min_num_params=0,
+fsdp_transformer_layer_cls_to_wrap=None,
+full_determinism=False,
+gradient_accumulation_steps=1,
+gradient_checkpointing=False,
+greater_is_better=None,
+group_by_length=False,
+half_precision_backend=auto,
+hub_model_id=None,
+hub_private_repo=False,
+hub_strategy=every_save,
+hub_token=<HUB_TOKEN>,
+ignore_data_skip=False,
+include_inputs_for_metrics=False,
+jit_mode_eval=False,
+label_names=None,
+label_smoothing_factor=0.0,
+learning_rate=0.0001,
+length_column_name=length,
+load_best_model_at_end=False,
+local_rank=0,
+log_level=passive,
+log_level_replica=warning,
+log_on_each_node=True,
+logging_dir=/storage/store/kevin/local_files/experiments/SpliceBERT-human_MLM_run_2/runs/Jul14_21-09-47_6e654b3c7044,
+logging_first_step=False,
+logging_nan_inf_filter=True,
+logging_steps=500,
+logging_strategy=steps,
+lr_scheduler_type=linear,
+max_grad_norm=1.0,
+max_steps=16,
+metric_for_best_model=None,
+mp_parameters=,
+no_cuda=False,
+num_train_epochs=3.0,
+optim=adamw_hf,
+optim_args=None,
+output_dir=/storage/store/kevin/local_files/experiments/SpliceBERT-human_MLM_run_2/,
+overwrite_output_dir=True,
+past_index=-1,
+per_device_eval_batch_size=8,
+per_device_train_batch_size=8,
+prediction_loss_only=False,
+push_to_hub=False,
+push_to_hub_model_id=None,
+push_to_hub_organization=None,
+push_to_hub_token=<PUSH_TO_HUB_TOKEN>,
+ray_scope=last,
+remove_unused_columns=True,
+report_to=['tensorboard'],
+resume_from_checkpoint=None,
+run_name=/storage/store/kevin/local_files/experiments/SpliceBERT-human_MLM_run_2/,
+save_on_each_node=False,
+save_safetensors=False,
+save_steps=500,
+save_strategy=steps,
+save_total_limit=None,
+seed=42,
+sharded_ddp=[],
+skip_memory_metrics=True,
+tf32=None,
+torch_compile=False,
+torch_compile_backend=None,
+torch_compile_mode=None,
+torchdynamo=None,
+tpu_metrics_debug=False,
+tpu_num_cores=None,
+use_ipex=False,
+use_legacy_prediction_loop=False,
+use_mps_device=False,
+warmup_ratio=0.0,
+warmup_steps=0,
+weight_decay=0.0,
+xpu_backend=None,
+)
+07/14/2023 21:09:48 - WARNING - datasets.builder - No config specified, defaulting to: human_reference_genome/6kbp
+07/14/2023 21:09:48 - INFO - datasets.info - Loading Dataset Infos from /root/.cache/huggingface/modules/datasets_modules/datasets/InstaDeepAI--human_reference_genome/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919
+07/14/2023 21:09:48 - INFO - datasets.builder - Overwrite dataset info from restored data version if exists.
+07/14/2023 21:09:48 - INFO - datasets.info - Loading Dataset info from /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919
+07/14/2023 21:09:48 - WARNING - datasets.builder - Found cached dataset human_reference_genome (/storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919)
+07/14/2023 21:09:48 - INFO - datasets.info - Loading Dataset info from /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919
+07/14/2023 21:09:49 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-11efaeb9f917ddb2.arrow
+07/14/2023 21:09:49 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-3f0d5645fec06c47.arrow
+07/14/2023 21:09:49 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-e962cc351210c033.arrow
+07/14/2023 21:09:49 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-ca01c24dc6b7a683.arrow
+07/14/2023 21:09:49 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-69ebd1b75ac94ff7.arrow
+07/14/2023 21:09:49 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-5f59db04f3d75728.arrow
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 0.5288, 'eval_samples_per_second': 73.753, 'eval_steps_per_second': 5.673, 'epoch': 0.1}
+{'train_runtime': 10.9214, 'train_samples_per_second': 23.44, 'train_steps_per_second': 1.465, 'train_loss': 0.0, 'epoch': 0.1}
+***** train metrics *****
+  epoch                    =        0.1
+  train_loss               =        0.0
+  train_runtime            = 0:00:10.92
+  train_samples            =       2492
+  train_samples_per_second =      23.44
+  train_steps_per_second   =      1.465
+07/14/2023 21:10:06 - INFO - __main__ - *** Evaluate ***
+***** eval metrics *****
+  epoch                   =        0.1
+  eval_accuracy           =        nan
+  eval_loss               =        nan
+  eval_runtime            = 0:00:00.52
+  eval_samples            =         39
+  eval_samples_per_second =     73.987
+  eval_steps_per_second   =      5.691
+  perplexity              =        nan
+07/14/2023 21:17:03 - WARNING - __main__ - Process rank: 0, device: cuda:0, n_gpu: 2distributed training: True, 16-bits training: True
+07/14/2023 21:17:03 - INFO - __main__ - Training/evaluation parameters TrainingArguments(
+_n_gpu=2,
+adafactor=False,
+adam_beta1=0.9,
+adam_beta2=0.999,
+adam_epsilon=1e-08,
+auto_find_batch_size=False,
+bf16=False,
+bf16_full_eval=False,
+data_seed=None,
+dataloader_drop_last=False,
+dataloader_num_workers=0,
+dataloader_pin_memory=True,
+ddp_backend=None,
+ddp_bucket_cap_mb=None,
+ddp_find_unused_parameters=None,
+ddp_timeout=1800,
+debug=[],
+deepspeed=None,
+disable_tqdm=False,
+do_eval=True,
+do_predict=False,
+do_train=True,
+eval_accumulation_steps=None,
+eval_delay=0,
+eval_steps=1.0,
+evaluation_strategy=steps,
+fp16=True,
+fp16_backend=auto,
+fp16_full_eval=False,
+fp16_opt_level=O1,
+fsdp=[],
+fsdp_config={'fsdp_min_num_params': 0, 'xla': False, 'xla_fsdp_grad_ckpt': False},
+fsdp_min_num_params=0,
+fsdp_transformer_layer_cls_to_wrap=None,
+full_determinism=False,
+gradient_accumulation_steps=1,
+gradient_checkpointing=False,
+greater_is_better=None,
+group_by_length=False,
+half_precision_backend=auto,
+hub_model_id=None,
+hub_private_repo=False,
+hub_strategy=every_save,
+hub_token=<HUB_TOKEN>,
+ignore_data_skip=False,
+include_inputs_for_metrics=False,
+jit_mode_eval=False,
+label_names=None,
+label_smoothing_factor=0.0,
+learning_rate=0.0001,
+length_column_name=length,
+load_best_model_at_end=False,
+local_rank=0,
+log_level=passive,
+log_level_replica=warning,
+log_on_each_node=True,
+logging_dir=/storage/store/kevin/local_files/experiments/SpliceBERT-human_MLM_run_2/runs/Jul14_21-17-03_6e654b3c7044,
+logging_first_step=False,
+logging_nan_inf_filter=True,
+logging_steps=500,
+logging_strategy=steps,
+lr_scheduler_type=linear,
+max_grad_norm=1.0,
+max_steps=16,
+metric_for_best_model=None,
+mp_parameters=,
+no_cuda=False,
+num_train_epochs=3.0,
+optim=adamw_hf,
+optim_args=None,
+output_dir=/storage/store/kevin/local_files/experiments/SpliceBERT-human_MLM_run_2/,
+overwrite_output_dir=True,
+past_index=-1,
+per_device_eval_batch_size=1,
+per_device_train_batch_size=8,
+prediction_loss_only=False,
+push_to_hub=False,
+push_to_hub_model_id=None,
+push_to_hub_organization=None,
+push_to_hub_token=<PUSH_TO_HUB_TOKEN>,
+ray_scope=last,
+remove_unused_columns=True,
+report_to=['tensorboard'],
+resume_from_checkpoint=None,
+run_name=/storage/store/kevin/local_files/experiments/SpliceBERT-human_MLM_run_2/,
+save_on_each_node=False,
+save_safetensors=False,
+save_steps=500,
+save_strategy=steps,
+save_total_limit=None,
+seed=42,
+sharded_ddp=[],
+skip_memory_metrics=True,
+tf32=None,
+torch_compile=False,
+torch_compile_backend=None,
+torch_compile_mode=None,
+torchdynamo=None,
+tpu_metrics_debug=False,
+tpu_num_cores=None,
+use_ipex=False,
+use_legacy_prediction_loop=False,
+use_mps_device=False,
+warmup_ratio=0.0,
+warmup_steps=0,
+weight_decay=0.0,
+xpu_backend=None,
+)
+07/14/2023 21:17:05 - WARNING - datasets.builder - No config specified, defaulting to: human_reference_genome/6kbp
+07/14/2023 21:17:05 - INFO - datasets.info - Loading Dataset Infos from /root/.cache/huggingface/modules/datasets_modules/datasets/InstaDeepAI--human_reference_genome/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919
+07/14/2023 21:17:05 - INFO - datasets.builder - Overwrite dataset info from restored data version if exists.
+07/14/2023 21:17:05 - INFO - datasets.info - Loading Dataset info from /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919
+07/14/2023 21:17:05 - WARNING - datasets.builder - Found cached dataset human_reference_genome (/storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919)
+07/14/2023 21:17:05 - INFO - datasets.info - Loading Dataset info from /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919
+07/14/2023 21:17:05 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-11efaeb9f917ddb2.arrow
+07/14/2023 21:17:05 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-3f0d5645fec06c47.arrow
+07/14/2023 21:17:05 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-e962cc351210c033.arrow
+07/14/2023 21:17:05 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-ca01c24dc6b7a683.arrow
+07/14/2023 21:17:05 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-69ebd1b75ac94ff7.arrow
+07/14/2023 21:17:05 - WARNING - datasets.arrow_dataset - Loading cached processed dataset at /storage/store/kevin/data/cache/InstaDeepAI___human_reference_genome/6kbp/0.0.0/1dda7e5c35a9246c397dab1c8343852df92847b32619e1a72261d5cee3b2f919/cache-5f59db04f3d75728.arrow
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2545, 'eval_samples_per_second': 31.088, 'eval_steps_per_second': 15.943, 'epoch': 0.01}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2468, 'eval_samples_per_second': 31.281, 'eval_steps_per_second': 16.041, 'epoch': 0.01}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2492, 'eval_samples_per_second': 31.221, 'eval_steps_per_second': 16.011, 'epoch': 0.02}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2601, 'eval_samples_per_second': 30.949, 'eval_steps_per_second': 15.872, 'epoch': 0.03}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2569, 'eval_samples_per_second': 31.03, 'eval_steps_per_second': 15.913, 'epoch': 0.03}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2452, 'eval_samples_per_second': 31.321, 'eval_steps_per_second': 16.062, 'epoch': 0.04}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2575, 'eval_samples_per_second': 31.014, 'eval_steps_per_second': 15.905, 'epoch': 0.04}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2499, 'eval_samples_per_second': 31.203, 'eval_steps_per_second': 16.001, 'epoch': 0.05}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2517, 'eval_samples_per_second': 31.158, 'eval_steps_per_second': 15.978, 'epoch': 0.06}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2575, 'eval_samples_per_second': 31.014, 'eval_steps_per_second': 15.905, 'epoch': 0.06}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.249, 'eval_samples_per_second': 31.226, 'eval_steps_per_second': 16.013, 'epoch': 0.07}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2598, 'eval_samples_per_second': 30.958, 'eval_steps_per_second': 15.876, 'epoch': 0.08}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2503, 'eval_samples_per_second': 31.193, 'eval_steps_per_second': 15.996, 'epoch': 0.08}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2482, 'eval_samples_per_second': 31.244, 'eval_steps_per_second': 16.022, 'epoch': 0.09}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2954, 'eval_samples_per_second': 30.105, 'eval_steps_per_second': 15.439, 'epoch': 0.1}
+{'eval_loss': nan, 'eval_accuracy': nan, 'eval_runtime': 1.2505, 'eval_samples_per_second': 31.188, 'eval_steps_per_second': 15.994, 'epoch': 0.1}
+{'train_runtime': 30.5476, 'train_samples_per_second': 8.38, 'train_steps_per_second': 0.524, 'train_loss': 0.0, 'epoch': 0.1}
+***** train metrics *****
+  epoch                    =        0.1
+  train_loss               =        0.0
+  train_runtime            = 0:00:30.54
+  train_samples            =       2492
+  train_samples_per_second =       8.38
+  train_steps_per_second   =      0.524
+07/14/2023 21:17:42 - INFO - __main__ - *** Evaluate ***
+***** eval metrics *****
+  epoch                   =        0.1
+  eval_accuracy           =        nan
+  eval_loss               =        nan
+  eval_runtime            = 0:00:01.25
+  eval_samples            =         39
+  eval_samples_per_second =     31.168
+  eval_steps_per_second   =     15.984
+  perplexity              =        nan
