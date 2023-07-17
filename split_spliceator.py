@@ -108,4 +108,5 @@ def get_labels(subset):
         labels.append(label)
     # convert to numpy array 
     labels = np.array(labels)
+    
     return labels 

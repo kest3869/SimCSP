@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # specifiy the home directory
-OUT_DIR="/storage/store/kevin/local_files/scrap/scrap_exp1/"
+OUT_DIR="/storage/store/kevin/local_files/exp1/"
 
 # make the directory if it does not exist 
 mkdir -p "$OUT_DIR"
-echo "Running fit at $OUT_DIR"
+echo "Running fit.sh at $OUT_DIR"
 
 # make the sub-directories if they don't already exist 
 mkdir -p "${OUT_DIR}/pretrained_models/"

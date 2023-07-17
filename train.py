@@ -95,15 +95,15 @@ else:
 logger.info(f"Using {device}")
 
 # Hyperparameters (all parts of training)
-num_folds = 2 # K in StratifiedKFold
+num_folds = 5 # K in StratifiedKFold
 seed = np.random.randint(0,1E5) # Random seed for StratifiedKFold and train_test_split
-num_train_epochs = 5 # Max number of training epochs for each model 
-bs = 64 # batch size used to train the model [Default 16]
+num_train_epochs = 200 # Max number of training epochs for each model 
+bs = 16 # batch size used to train the model [Default 16]
 nw = 4 # number of workers used for dataset construction 
 resume = False # used to restart model training from a checkpoint
 learning_rate = 1E-5 # Learning rate for model training 
 wd = 1E-6 # weight decay for model training
-patience = 2 # num iterations a model will train without improvements to val_auc 
+patience = 5 # num iterations a model will train without improvements to val_auc 
 max_len = 400
 
 # load tokenizer

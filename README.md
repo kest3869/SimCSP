@@ -2,8 +2,6 @@
 
 ## TODO: 
 - implement evaluate.sh
-    - implement eval_NMI.py
-    - implement eval_SCCS.py
     - implement eval_F1.py
     - implement eval_summarize.py
     - implement eval_plot.py

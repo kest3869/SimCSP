@@ -1,8 +1,8 @@
 # libraries 
 import os
-import sys
 import logging
 import argparse
+import gc
 import scanpy as sc
 import datetime
 from tqdm import tqdm
@@ -128,8 +128,9 @@ _, finetune_paths = get_paths(OUT_DIR)
 # go through and calculate embeddings
 for path in finetune_paths: 
 
-    # only calculate for fine-tuned models and only for first fold 
-    if "fold0" not in path:
+
+    # only compute first fold of fine-tune
+    if 'fold0' not in path:
         continue
 
     # skip if already completed 
@@ -138,7 +139,93 @@ for path in finetune_paths:
         continue
 
     # get our unqiue mdel
-    output = path + label 
+    output = path + '/' + label 
+    model = AutoModel.from_pretrained(path, add_pooling_layer=False, output_hidden_states=True).to(device)
+
+    # calculates embeddings
+    embedding = list()
+    for it, (seq, i, j, name, name2) in enumerate(tqdm(loader)):
+        seq = seq.to(device)
+        h = model(seq).hidden_states
+        h = torch.stack(h, dim=1).detach()
+        del seq
+        tmp_embed = list()
+        for k in range(h.shape[0]):
+            tmp_embed.append(h[k, :, i[k]+1:j[k]+1, :])
+        embedding.append(torch.stack(tmp_embed, dim=0).detach().cpu().numpy().astype(np.float16))
+    embedding = np.concatenate(embedding, axis=0)
+
+    # choose which layers to cluster 
+    if only_get_last_layer:
+        layers = [embedding.shape[1] - 1]
+    else:
+        layers = range(embedding.shape[1])
+
+    # calculates clusters 
+    for h in tqdm(layers, desc="UMAP"):
+        adata = sc.AnnData(embedding[:, h, :, :].reshape(embedding.shape[0], -1))
+        adata.obs['name'] = ds.name
+        adata.obs["label"] = [x.split("|")[-1] for x in ds.name]
+        sc.pp.pca(adata, n_comps=128, random_state=0)
+        sc.pp.neighbors(adata, use_rep='X_pca')
+        sc.tl.umap(adata, random_state=0)
+        sc.tl.leiden(adata)
+
+        # logs data
+        logger.info(f"{output}.L{h}.h5ad")
+        logger.info(f"bed{bed}")
+
+        # saves data
+        adata.write_h5ad(f"{output}.L{h}.h5ad")
+
+        # determines whether to skip AG/GT maps 
+        if skip_donor_acceptor_umap:
+            continue
+
+        # calculates AG/GT maps 
+        is_gt = np.asarray([x.split('|')[-1].startswith("GT") for x in adata.obs["label"]])
+        is_ag = np.asarray([x.split('|')[-1].startswith("AG") for x in adata.obs["label"]])
+        gt_adata = adata[is_gt]
+        ag_adata = adata[is_ag]
+        sc.pp.pca(gt_adata, n_comps=128, random_state=0)
+        sc.pp.neighbors(gt_adata, use_rep='X_pca')
+        sc.tl.umap(gt_adata, random_state=0)
+        sc.tl.leiden(gt_adata)
+        sc.pp.pca(ag_adata, n_comps=128, random_state=0)
+        sc.pp.neighbors(ag_adata, use_rep='X_pca')
+        sc.tl.umap(ag_adata, random_state=0)
+        sc.tl.leiden(ag_adata)
+        gt_adata.write_h5ad(f"{output}.L{h}.GT.h5ad")
+        ag_adata.write_h5ad(f"{output}.L{h}.AG.h5ad")
+
+    # collection of metadata from embed_gen
+    metadata = {
+        'out_dir' : path,
+        'model_path' : model,
+        'only_get_last_layer' : only_get_last_layer,
+        'genome' : genome,
+        'bed' : bed,
+        'seed' : seed,
+        'skip_donor_acceptor_umap' : skip_donor_acceptor_umap
+    }
+
+    # mark evaluation as finished
+    torch.save(datetime.datetime.now().time(), path + '/finished_embed_gen.pt')
+    logger.info('Finished with hyperparameters: %s', metadata)
+    gc.collect()
+
+# list of filepaths in outdir 
+pretrain_paths, _ = get_paths(OUT_DIR)
+# go through and calculate embeddings
+for path in pretrain_paths: 
+
+    # skip if already completed 
+    if os.path.exists(path + '/finished_embed_gen.pt'):
+        logger.info("Found embed: Skipping embed_gen")
+        continue
+
+    # get our unqiue mdel
+    output = path + '/' + label 
     model = AutoModel.from_pretrained(path, add_pooling_layer=False, output_hidden_states=True).to(device)
 
     # calculates embeddings
@@ -211,3 +298,4 @@ for path in finetune_paths:
     # mark training as finished
     torch.save(datetime.datetime.now().time(), path + '/finished_embed_gen.pt')
     logger.info('Finished with hyperparameters: %s', metadata)
+    gc.collect()

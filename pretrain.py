@@ -29,7 +29,7 @@ from sentence_transformers import SentenceTransformer, InputExample, losses, mod
 def chunk(data):
     chunks = []
     for seq in data["sequence"]:
-        chunks += [seq[i:i + 400] for i in range(0, len(seq), 510)]
+        chunks += [seq[i:i + 510] for i in range(0, len(seq), 510)]
     return {"sequence": chunks}
 
 # wraps Pyarrow dataset in Sentence Transformer class 
@@ -90,7 +90,7 @@ st = datetime.datetime.now().time()
 logger.info("start time:{st}".format(st=st))
 
 # load cached dataset
-ds = load_dataset('InstaDeepAI/human_reference_genome', '6kbp', split='train[:2%]')
+ds = load_dataset('InstaDeepAI/human_reference_genome', '6kbp', split='train')
 
 # apply the mapping function to the dataset
 ds = ds.map(chunk, remove_columns=ds.column_names, batched=True)
@@ -102,7 +102,6 @@ batch_size = 256
 learning_rate = 3e-5 # chosen by experiment 
 max_seq_len = 510
 use_cl = True 
-eval_bs = 8 # turn this down during experiments
 
 # define dataloader
 data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds), num_workers=4)
@@ -131,8 +130,8 @@ model.fit(
     use_amp = True,
     callback = callbacks,
     checkpoint_path = PRETRAINED_MODEL+'/checkpoints/',
-    checkpoint_save_steps = 1000,
-    checkpoint_save_total_limit = 100,
+    checkpoint_save_steps = 500,
+    checkpoint_save_total_limit = 1000,
 )
 
 # Save hyperparameter info to the logger
@@ -143,7 +142,6 @@ metadata = {
     'optimizer': 'AdamW',
     'base model': model_path,
     'loss':'MultipleNegativeRankings',
-    'bs_val': eval_bs,
     'outdir':OUT_DIR,
     'pretrained_model':PRETRAINED_MODEL,
     'number examples:':len(ds),
