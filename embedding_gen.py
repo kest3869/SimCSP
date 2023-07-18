@@ -94,7 +94,7 @@ only_get_last_layer = args.only_get_last_layer
 # logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-log_file = os.path.join(OUT_DIR, "embed_data.txt")
+log_file = os.path.join(OUT_DIR, "embed_data.log")
 file_handler = logging.FileHandler(log_file)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)

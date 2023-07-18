@@ -70,7 +70,7 @@ args = parser.parse_args()
 OUT_DIR = args.out_dir
 OUT_DIR += '/finetuned_models/'
 PRETRAINED_MODEL = args.pretrained_model
-PRETRAINED_MODEL += '/pretrained_models/'
+# PRETRAINED_MODEL += '/pretrained_models/'
 
 # Create a logger
 logger = logging.getLogger(__name__)

@@ -21,5 +21,5 @@ def get_paths(OUT_DIR):
             folder_path = os.path.join(dirpath, dirname)
             if "epoch" in dirname:
                 temp_paths.append(folder_path)
-    finetune_paths = sorted(temp_paths)
+    finetune_paths = sorted(temp_paths, key=lambda x: (int(x.split("fold")[-1].split("/")[0]), int(x.split("epoch")[-1]) if x.split("epoch")[-1].isdigit() else float('inf')))
     return pretrain_paths, finetune_paths

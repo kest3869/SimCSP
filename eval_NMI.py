@@ -53,42 +53,61 @@ metric_fun = normalized_mutual_info_score
 bed = "/storage/store/kevin/data/hg19.ss-motif.for_umap.bed.gz"
 label = os.path.basename(bed)
 pretrain_paths, finetune_paths = get_paths(OUT_DIR)
-paths = []
+pretrain_NMI_scores = []
+pretrain_NMI_paths = []
+finetune_NMI_scores = []
+finetune_NMI_paths = []
+
+# looping through pretrained paths and generating NMI scores
 for path in pretrain_paths:
-    paths.append(path)
-for path in finetune_paths:
-    paths.append(path)
-NMI_scores = []
-NMI_paths = []
-
-# looping through paths and generating NMI scores 
-for path in paths:
-
-    # only use the first foldof fine-tune
-    if any(fold in path for fold in ["fold1", "fold2", "fold3", "fold4"]):
-        continue
-
-    # Use first line for exp1, otherwise use 2nd
-    path = path + label + '.L6.h5ad'
-    #path = path + '/' + label + '.L6.h5ad'
+    # builds path to pre-computed embedding
+    path = path + '/' + label + '.L6.h5ad'
 
     # generate metrics from data
     splicebert_ss = sc.read_h5ad(path)
     nmi_score, nmi_donor, nmi_acceptor = cal_metric_by_group(splicebert_ss.obs["label"], splicebert_ss.obs["leiden"], metric_fun)
 
-    # save metrics 
+    # save metrics
     logger.info(f"nmi_score{nmi_score},nmi_donor{nmi_donor},nmi_accepter{nmi_acceptor}")
     logger.info(path)
-    NMI_scores.append(nmi_score)
-    NMI_paths.append(path)
+    pretrain_NMI_scores.append(nmi_score)
+    pretrain_NMI_paths.append(path)
 
-# save CSV of NMI scores 
-data = [["path", "score"]]
-for path, score in zip(NMI_paths, NMI_scores):
-    data.append([path, score])
-with open(OUT_DIR + '/results/' + 'NMI_results.csv', "w", newline="") as file:
-    writer = csv.writer(file)
-    writer.writerows(data)
+# looping through finetuned paths and generating NMI scores
+for path in finetune_paths:
+
+    # only use the first fold of fine-tune
+    if 'fold0' not in path:
+        continue
+
+    # builds path to pre-computed embedding
+    path = path + '/' + label + '.L6.h5ad'
+
+    # generate metrics from data
+    splicebert_ss = sc.read_h5ad(path)
+    nmi_score, nmi_donor, nmi_acceptor = cal_metric_by_group(splicebert_ss.obs["label"], splicebert_ss.obs["leiden"], metric_fun)
+
+    # save metrics
+    logger.info(f"nmi_score{nmi_score},nmi_donor{nmi_donor},nmi_accepter{nmi_acceptor}")
+    logger.info(path)
+    finetune_NMI_scores.append(nmi_score)
+    finetune_NMI_paths.append(path)
+
+# save CSV of pretrained NMI scores
+pretrain_data = [["path", "score"]]
+for path, score in zip(pretrain_NMI_paths, pretrain_NMI_scores):
+    pretrain_data.append([path, score])
+with open(OUT_DIR + '/results/' + 'pretrain_NMI_results.csv', "w", newline="") as file1:
+    writer = csv.writer(file1)
+    writer.writerows(pretrain_data)
+
+# save CSV of finetuned NMI scores
+finetune_data = [["path", "score"]]
+for path, score in zip(finetune_NMI_paths, finetune_NMI_scores):
+    finetune_data.append([path, score])
+with open(OUT_DIR + '/results/' + 'finetune_NMI_results.csv', "w", newline="") as file2:
+    writer = csv.writer(file2)
+    writer.writerows(finetune_data)
 
 # mark evaluation as finished
 torch.save(datetime.datetime.now().time(), OUT_DIR + '/results/' + '/finished_eval_NMI.pt')

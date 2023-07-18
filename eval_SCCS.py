@@ -1,4 +1,4 @@
-# imports 
+# libraries
 import argparse
 import logging
 import os
@@ -64,18 +64,16 @@ OUT_DIR = args.out_dir
 # Create a logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-file_handler = logging.FileHandler(OUT_DIR + 'eval_SCCS.log')
+file_handler = logging.FileHandler(OUT_DIR + '/results/' + 'eval_SCCS.log')
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
-'''
 # skip if already completed 
 if os.path.exists(OUT_DIR + '/results/' + '/finished_SCCS.pt'):
     logger.info("Found finished, skipping SCCS.")
     print("Found finished, skipping eval_SCCS.py!")
     sys.exit()
-'''
 
 # arguments 
 seed = 42
@@ -84,7 +82,7 @@ seed = 42
 pretrained_models, temp_models = get_paths(OUT_DIR)
 
 # load tokenizer
-tokenizer = AutoTokenizer.from_pretrained(pretrained_models[0])
+tokenizer = AutoTokenizer.from_pretrained('/storage/store/kevin/data/tokenizer_setup')
 # Positive and Negative paths
 positive_dir = '/storage/store/kevin/data/spliceator/Training_data/Positive/GS'
 negative_dir = '/storage/store/kevin/data/spliceator/Training_data/Negative/GS/GS_1'
