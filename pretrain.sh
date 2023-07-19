@@ -4,23 +4,42 @@
 OUT_DIR="/storage/store/kevin/local_files/exp1/"
 SPLIT_DIR="${OUT_DIR}/SPLITS/"
 
-# use this to determine which pre-trained checkpoints should be used for fine-tuneing
-OUT_DIRS1=("${OUT_DIR}")
-
-# use once the chosen checkpoints have been fine-tuned
-OUT_DIRS2=(
-  "${OUT_DIR}/BEST_SCCS/"
-  "${OUT_DIR}/BEST_NMI/"
-  "${OUT_DIR}/BASELINE/"
-)
+# make OUT_DIR if it does not exist 
+mkdir -p "$OUT_DIR"
+echo "Running fit.sh at $OUT_DIR"
 
 # make SPLIT_DIR if it does not exist
 mkdir -p "$SPLIT_DIR"
-echo "SPLIT_DIR at $SPLIT_DIR"
+echo "Made SPLIT_DIR at ${SPLIT_DIR}"
+
+# make the sub-directories if they don't already exist 
+mkdir -p "${OUT_DIR}/pretrained_models/"
+mkdir -p "${OUT_DIR}/finetuned_models/" 
+
+# pre-train the model
+echo "Starting pre-training!"
+python pretrain.py --model_save_path "${OUT_DIR}"
+echo "Finished pre-training! Making splits!"
+
+# Generate split for this experiement
+python split_spliceator.py --split_dir "${SPLIT_DIR}"
+echo "Finished splitting! Splits saved at ${SPLIT_DIR}"
+
+# generate embeddings for pre-train
+echo "Generating embeddings!"
+python embedding_gen.py --out_dir "${OUT_DIR}" --only_get_last_layer
+echo "Finished generating embeddings!"
+
+# print the time completed 
+current_datetime=$(date +"%Y-%m-%d %H:%M:%S")
+echo "pretrain.sh completed at time: ${current_datetime}!"
+
+# use this to determine which pre-trained checkpoints should be used for fine-tuning
+OUT_DIRS1=("${OUT_DIR}")
 
 # adjust OUT_DIRS# based on usage 
-for OUT_DIR in "${OUT_DIRS2[@]}"; do
-  echo "Running eval.sh at $OUT_DIR"
+for OUT_DIR in "${OUT_DIRS1[@]}"; do
+  echo "Running eval.sh at ${OUT_DIR}"
 
   # Make a results directory if it does not already exist
   mkdir -p "${OUT_DIR}/results/"

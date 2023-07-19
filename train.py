@@ -17,7 +17,6 @@ from torch.cuda.amp import autocast, GradScaler
 
 # Files 
 import load # loads the spliceator dataset 
-from split_spliceator import split_spliceator  # splits the dataset and saves the indices 
 
 # Environment 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -63,25 +62,24 @@ def validate_model(model: AutoModelForSequenceClassification, loader: DataLoader
 parser = argparse.ArgumentParser(description='Finetune model')
 parser.add_argument('-o', '--out-dir', type=str, help='The model save path')
 parser.add_argument('-m', '--pretrained-model', type=str, help='Path to pre-trained model')
+parser.add_argument('--split_dir', type=str, help='The path to the splits')
 # Parse the command line arguments
 args = parser.parse_args()
-
 # Retrieve the values of the command line argument
 OUT_DIR = args.out_dir
-OUT_DIR += '/finetuned_models/'
 PRETRAINED_MODEL = args.pretrained_model
-# PRETRAINED_MODEL += '/pretrained_models/'
+SPLIT_DIR = args.split_dir
 
 # Create a logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-file_handler = logging.FileHandler(OUT_DIR + 'finetune.log')
+file_handler = logging.FileHandler(OUT_DIR + '/finetuned_models/' + 'finetune.log')
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 # skip if already completed 
-if os.path.exists(OUT_DIR + 'finished_finetune.pt'):
+if os.path.exists(OUT_DIR + '/finetuned_models/' + 'finished_finetune.pt'):
     logger.info("Found finetuned: Skipping finetune!")
     sys.exit()
 
@@ -96,7 +94,6 @@ logger.info(f"Using {device}")
 
 # Hyperparameters (all parts of training)
 num_folds = 5 # K in StratifiedKFold
-seed = np.random.randint(0,1E5) # Random seed for StratifiedKFold and train_test_split
 num_train_epochs = 200 # Max number of training epochs for each model 
 bs = 16 # batch size used to train the model [Default 16]
 nw = 4 # number of workers used for dataset construction 
@@ -104,7 +101,7 @@ resume = False # used to restart model training from a checkpoint
 learning_rate = 1E-5 # Learning rate for model training 
 wd = 1E-6 # weight decay for model training
 patience = 5 # num iterations a model will train without improvements to val_auc 
-max_len = 400
+max_len = 400 # max length of input string 
 
 # load tokenizer
 tokenizer = AutoTokenizer.from_pretrained(PRETRAINED_MODEL)
@@ -124,7 +121,8 @@ ds = load.SpliceatorDataset(
     max_len=max_len
 )
 # call split_spliceator to get our splits 
-train_split, validation_split, test_split = split_spliceator(ds.labels, OUT_DIR, num_folds=num_folds, rng_seed=seed)
+train_split = torch.load(SPLIT_DIR + '/train_split.pt')
+validation_split = torch.load(SPLIT_DIR + '/validation_split.pt')
 
 # used for model evaluation
 best_auc = -1
@@ -138,7 +136,7 @@ for epoch in range(num_train_epochs):
     for fold in range(num_folds):
 
         # make paths 
-        fold_outdir = os.path.join(OUT_DIR, "fold{}".format(fold))
+        fold_outdir = os.path.join(OUT_DIR + '/finetuned_models/', "fold{}".format(fold))
 
         # setup folder 
         if not os.path.exists(fold_outdir):
@@ -272,12 +270,12 @@ metadata = {
     'optimizer': 'AdamW',
     'loss':'Accuracy',
     'len(ds)': len(ds),
-    'outdir':OUT_DIR,
+    'outdir':OUT_DIR + '/finetuned_models/',
     'pretrained_model_path':PRETRAINED_MODEL,
     'number examples:':len(ds),
     'time':datetime.datetime.now().time()
     }
 
 # Mark training as finished
-torch.save(datetime.datetime.now().time(), OUT_DIR + 'finished_finetune.pt')
+torch.save(datetime.datetime.now().time(), OUT_DIR + '/finetuned_models/' + 'finished_finetune.pt')
 logger.info('Finished with hyperparameters: %s', metadata)

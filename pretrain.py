@@ -51,36 +51,23 @@ def callbacks(score, epoch, steps):
 
 # Create the argument parser
 parser = argparse.ArgumentParser(description='Pretrain model')
-#parser.add_argument('-b', '--batch_size', type=int, help='The batch size')
-#parser.add_argument('-l', '--learning_rate', type=float, help='The learning rate')
 parser.add_argument('-p', '--model_save_path', type=str, help='The model save path')
-
 # Parse the command line arguments
 args = parser.parse_args()
-
 # Retrieve the values of the command line arguments
 OUT_DIR = args.model_save_path
-OUT_DIR += '/pretrained_models/'
-
-# Check if the command line arguments are provided
-if OUT_DIR is None:
-    parser.error('Missing command line argument(s), -p out/path/for/trained/model')
-
-# make path
-PRETRAINED_MODEL = OUT_DIR
 # make directory if it does not exist 
-if not os.path.exists(PRETRAINED_MODEL + '/checkpoints/'):
-    os.makedirs(PRETRAINED_MODEL + '/checkpoints/')
+if not os.path.exists(OUT_DIR + '/pretrained_models/checkpoints/'):
+    os.makedirs(OUT_DIR + '/pretrained_models/checkpoints/')
 # Create a logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-file_handler = logging.FileHandler(OUT_DIR + 'pretrain.log')
+file_handler = logging.FileHandler(OUT_DIR + '/pretrained_models/' + 'pretrain.log')
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
-
 # skip if already completed 
-if os.path.exists(PRETRAINED_MODEL + 'finished_pretrain.pt'):
+if os.path.exists(OUT_DIR + '/pretrained_models/' + 'finished_pretrain.pt'):
     logger.info("Found Pretrained Model: Skipping Pretrain")
     sys.exit()
 
@@ -99,15 +86,18 @@ ds = InputDataset(ds['sequence'])
 
 # hyperparameters
 batch_size = 256 
-learning_rate = 3e-5 # chosen by experiment 
+learning_rate = 3e-5 
 max_seq_len = 510
+wd = 1E-6
 use_cl = True 
 
 # define dataloader
 data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds), num_workers=4)
 
 # define model 
-model_path = "/storage/store/kevin/data/SpliceBERT-human.510nt/"  
+model_path = "/storage/store/kevin/data/SpliceBERT-human.510nt"  
+
+# build model for contrasitve learning
 word_embedding_model = models.Transformer(model_path, max_seq_length=max_seq_len)
 pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
@@ -118,7 +108,8 @@ num_epochs = 1
 
 # learning rate 
 optimizer_class = AdamW
-optimizer_params =  {'lr': learning_rate}
+optimizer_params =  {'lr': learning_rate,
+                     'weight_decay': wd}
 
 # fit model
 model.fit(
@@ -126,10 +117,10 @@ model.fit(
     epochs=num_epochs,
     optimizer_class=optimizer_class,
     optimizer_params=optimizer_params,
-    output_path=PRETRAINED_MODEL,
+    output_path= OUT_DIR + '/pretrained_models/',
     use_amp = True,
     callback = callbacks,
-    checkpoint_path = PRETRAINED_MODEL+'/checkpoints/',
+    checkpoint_path = OUT_DIR+'/pretrained_models/checkpoints/',
     checkpoint_save_steps = 500,
     checkpoint_save_total_limit = 1000,
 )
@@ -137,17 +128,18 @@ model.fit(
 # Save hyperparameter info to the logger
 metadata = {
     'learning_rate': learning_rate,
+    'weight_decay' : wd,
     'batch_size': batch_size,
     'num_epochs': num_epochs,
     'optimizer': 'AdamW',
     'base model': model_path,
     'loss':'MultipleNegativeRankings',
     'outdir':OUT_DIR,
-    'pretrained_model':PRETRAINED_MODEL,
+    'pretrained_model': OUT_DIR + '/pretrained_models/',
     'number examples:':len(ds),
     'finished at time':datetime.datetime.now().time()
 }
 
 # mark training as finished
-torch.save(datetime.datetime.now().time(), OUT_DIR + 'finished_pretrain.pt')
+torch.save(datetime.datetime.now().time(), OUT_DIR + '/pretrained_models/' + 'finished_pretrain.pt')
 logger.info('Finished with hyperparameters: %s', metadata)

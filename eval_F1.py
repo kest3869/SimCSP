@@ -15,7 +15,6 @@ from torch.cuda.amp import autocast
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 # files
-import split_spliceator
 from get_paths import get_paths
 import load
 
@@ -79,11 +78,14 @@ def get_F1_scores(model_paths, ds_eval):
 # Create the argument parser
 parser = argparse.ArgumentParser(description='Get_F1_scores')
 parser.add_argument('-p', '--out_dir', type=str, help='The save path of the F1 scores')
+parser.add_argument('--split_dir', type=str, help='The path to the splits')
 # Parse the command line arguments
 args = parser.parse_args()
 # Retrieve the values of the command line arguments
 OUT_DIR = args.out_dir
+SPLIT_DIR = args.split_dir
 
+'''
 # Create a logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -92,15 +94,12 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
-
 # skip if already completed 
 if os.path.exists(OUT_DIR + '/results/' + '/finished_F1.pt'):
     logger.info("Found finished, skipping F1.")
     print("Found finished, skipping eval_F1.py!")
     sys.exit()
-
-# arguments 
-seed = 42
+'''
 
 # Get device
 # Check for CPU or GPU
@@ -118,7 +117,7 @@ for p in temp_models:
         finetuned_models.append(p)
 
 # load tokenizer
-tokenizer = AutoTokenizer.from_pretrained(finetuned_models[0])
+tokenizer = AutoTokenizer.from_pretrained("/storage/store/kevin/data/tokenizer_setup")
 # Positive and Negative paths
 positive_dir = '/storage/store/kevin/data/spliceator/Training_data/Positive/GS'
 negative_dir = '/storage/store/kevin/data/spliceator/Training_data/Negative/GS/GS_1'
@@ -132,8 +131,9 @@ ds = load.SpliceatorDataset(
     tokenizer=tokenizer,
     max_len=400
 )
-# call split_spliceator.split_spliceator to get our splits 
-_, _, test_split = split_spliceator.split_spliceator(ds.labels, OUT_DIR, num_folds=5, rng_seed=seed)
+
+# load the split the fine-tuned model used 
+test_split = torch.load(SPLIT_DIR + 'test_split.pt')
 
 # get the F1 scores for each fold 
 f1s = []
@@ -147,14 +147,20 @@ for i in range(np.shape(test_split)[0]):
     temp_f1s, temp_paths = get_F1_scores(finetuned_models, test_ds)
     paths.append(temp_paths)
     f1s.append(temp_f1s)
+    mean_f1s.append(np.mean(temp_f1s))
+
 
 # save CSV of F1 scores 
 with open(OUT_DIR + '/results/' + 'F1_results_.csv', "w", newline="") as file1:
     writer = csv.writer(file1)
     writer.writerows(f1s)
-# save CSV of paths
-with open(OUT_DIR + '/results/' + 'F1_paths_.csv', "w", newline="") as file2:
+# save CSV of mean_F1 scores 
+with open(OUT_DIR + '/results/' + 'mean_F1_results_.csv', "w", newline="") as file2:
     writer = csv.writer(file2)
+    writer.writerows(mean_f1s)
+# save CSV of paths
+with open(OUT_DIR + '/results/' + 'F1_paths_.csv', "w", newline="") as file3:
+    writer = csv.writer(file3)
     writer.writerows(paths)
 
 # mark evaluation as finished

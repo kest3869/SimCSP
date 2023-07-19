@@ -46,9 +46,9 @@ def split_spliceator(labels, OUT_DIR, num_folds=5, rng_seed=42):
         test_split.append(test_ind)
 
     # save the folds for training 
-    torch.save(train_split, OUT_DIR + 'train_split.pt')
-    torch.save(validation_split, OUT_DIR + 'validation_split.pt')
-    torch.save(test_split, OUT_DIR + 'test_split.pt')
+    torch.save(train_split, OUT_DIR + '/train_split.pt')
+    torch.save(validation_split, OUT_DIR + '/validation_split.pt')
+    torch.save(test_split, OUT_DIR + '/test_split.pt')
 
     return train_split, validation_split, test_split
 
@@ -71,7 +71,7 @@ def prep_val_data(ds, tokenizer, rng_seed=42):
     if len(indices) % 2 != 0:  # If the length is odd
         indices.pop(0)  # Remove the first element
     # generate tuples from the shuffled list 
-    random_pairs = tqdm([(indices[i], indices[i+1]) for i in range(0, len(indices), 2)], desc='making pairs')
+    random_pairs = [(indices[i], indices[i+1]) for i in range(0, len(indices), 2)]
 
     # new "dataset" 
     new_dataset = []
@@ -110,3 +110,57 @@ def get_labels(subset):
     labels = np.array(labels)
     
     return labels 
+
+if __name__ == "__main__":
+
+    # libraries 
+    import os
+    import argparse
+    import logging
+    import numpy as np
+    import datetime
+    import torch 
+    from transformers import AutoTokenizer
+
+    # files
+    import load 
+
+    # command line tools
+    parser = argparse.ArgumentParser(description='Generate splits for Spliceator dataset')
+    parser.add_argument('--split_dir', type=str, help='The path to the splits')
+    # Parse the command line arguments
+    args = parser.parse_args()
+    # Retrieve the values of the command line argument
+    SPLIT_DIR = args.split_dir
+    # Create a logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(SPLIT_DIR + 'split.log')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # arguments 
+    num_folds = 5 # K in StratifiedKFold
+    seed = np.random.randint(1, 1E5) # random value used to generate splits
+    
+    # Load dataset
+    tokenizer = AutoTokenizer.from_pretrained('/storage/store/kevin/data/tokenizer_setup')
+    positive_dir = '/storage/store/kevin/data/spliceator/Training_data/Positive/GS'
+    negative_dir = '/storage/store/kevin/data/spliceator/Training_data/Negative/GS/GS_1'
+    positive_files = [os.path.join(positive_dir, file) for file in os.listdir(positive_dir)]
+    negative_files = [os.path.join(negative_dir, file) for file in os.listdir(negative_dir)]
+    ds = load.SpliceatorDataset(
+        positive=positive_files,
+        negative=negative_files,
+        tokenizer=tokenizer,
+        max_len=400
+    )
+
+    # call split_spliceator to save splits  
+    split_spliceator(ds.labels, SPLIT_DIR, num_folds, seed)
+
+    # save num_folds, seed, time
+    logger.info("num_folds: " + str(num_folds))
+    logger.info("seed: " + str(seed))
+    logger.info("time: " + str(datetime.datetime.now().time()))

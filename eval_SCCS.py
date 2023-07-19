@@ -56,10 +56,12 @@ def get_SCCS_scores(model_paths, ds_eval):
 # Create the argument parser
 parser = argparse.ArgumentParser(description='Get_SCCS_scores')
 parser.add_argument('-p', '--out_dir', type=str, help='The model save path')
+parser.add_argument('--split_dir', type=str, help='The path to the splits')
 # Parse the command line arguments
 args = parser.parse_args()
 # Retrieve the values of the command line arguments
 OUT_DIR = args.out_dir
+SPLIT_DIR = args.split_dir
 
 # Create a logger
 logger = logging.getLogger(__name__)
@@ -74,9 +76,6 @@ if os.path.exists(OUT_DIR + '/results/' + '/finished_SCCS.pt'):
     logger.info("Found finished, skipping SCCS.")
     print("Found finished, skipping eval_SCCS.py!")
     sys.exit()
-
-# arguments 
-seed = 42
 
 # get paths to trained models 
 pretrained_models, temp_models = get_paths(OUT_DIR)
@@ -97,8 +96,8 @@ ds = load.SpliceatorDataset(
     max_len=400
 )
 
-# call split_spliceator.split_spliceator to get our splits 
-_, _, test_split = split_spliceator.split_spliceator(ds.labels, OUT_DIR, num_folds=5, rng_seed=seed)
+# load the split the fine-tuned model used 
+test_split = torch.load(SPLIT_DIR + '/test_split.pt')
 # call split_spliceator.pre_val_data to build semantic similarity dataset from subset
 ds_prepped = split_spliceator.prep_val_data(Subset(ds,test_split[0]), tokenizer)
 

@@ -63,15 +63,17 @@ for path in pretrain_paths:
     # builds path to pre-computed embedding
     path = path + '/' + label + '.L6.h5ad'
 
-    # generate metrics from data
-    splicebert_ss = sc.read_h5ad(path)
-    nmi_score, nmi_donor, nmi_acceptor = cal_metric_by_group(splicebert_ss.obs["label"], splicebert_ss.obs["leiden"], metric_fun)
+    # check if the path exists 
+    if os.path.exists(path):
+        # generate metrics from data
+        splicebert_ss = sc.read_h5ad(path)
+        nmi_score, nmi_donor, nmi_acceptor = cal_metric_by_group(splicebert_ss.obs["label"], splicebert_ss.obs["leiden"], metric_fun)
 
-    # save metrics
-    logger.info(f"nmi_score{nmi_score},nmi_donor{nmi_donor},nmi_accepter{nmi_acceptor}")
-    logger.info(path)
-    pretrain_NMI_scores.append(nmi_score)
-    pretrain_NMI_paths.append(path)
+        # save metrics
+        logger.info(f"nmi_score{nmi_score},nmi_donor{nmi_donor},nmi_accepter{nmi_acceptor}")
+        logger.info(path)
+        pretrain_NMI_scores.append(nmi_score)
+        pretrain_NMI_paths.append(path)
 
 # looping through finetuned paths and generating NMI scores
 for path in finetune_paths:
