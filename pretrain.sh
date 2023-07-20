@@ -54,16 +54,6 @@ for OUT_DIR in "${OUT_DIRS1[@]}"; do
   python eval_SCCS.py --out_dir "${OUT_DIR}" --split_dir "${SPLIT_DIR}"
   echo "Finished generating SCCS data!"
 
-  # Generate F1 scores for fine-tuned models 
-  echo "Generating F1 scores!"
-  python eval_F1.py --out_dir "${OUT_DIR}" --split_dir "${SPLIT_DIR}"
-  echo "Finished generating F1 scores!"
-
-  # Make a boxplot of the best model's performance on the test data
-  echo "Generating boxplot!"
-  python eval_boxplot.py --out_dir "${OUT_DIR}"
-  echo "Finished generating boxplot!"
-
   current_datetime=$(date +"%Y-%m-%d %H:%M:%S")
   echo "eval.sh completed at time: ${current_datetime} for ${OUT_DIR}!"
 done

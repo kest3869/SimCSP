@@ -91,4 +91,4 @@ for version in versions:
 logger.info(metadata_combined)
 
 # mark evaluation as finished
-torch.save(datetime.datetime.now().time(), os.path.join(OUT_DIR, 'results', '/finished_plot.pt'))
+torch.save(datetime.datetime.now().time(), os.path.join(OUT_DIR, '/results/', '/finished_plot.pt'))

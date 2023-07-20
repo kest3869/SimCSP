@@ -147,17 +147,12 @@ for i in range(np.shape(test_split)[0]):
     temp_f1s, temp_paths = get_F1_scores(finetuned_models, test_ds)
     paths.append(temp_paths)
     f1s.append(temp_f1s)
-    mean_f1s.append(np.mean(temp_f1s))
 
 
 # save CSV of F1 scores 
 with open(OUT_DIR + '/results/' + 'F1_results_.csv', "w", newline="") as file1:
     writer = csv.writer(file1)
     writer.writerows(f1s)
-# save CSV of mean_F1 scores 
-with open(OUT_DIR + '/results/' + 'mean_F1_results_.csv', "w", newline="") as file2:
-    writer = csv.writer(file2)
-    writer.writerows(mean_f1s)
 # save CSV of paths
 with open(OUT_DIR + '/results/' + 'F1_paths_.csv', "w", newline="") as file3:
     writer = csv.writer(file3)

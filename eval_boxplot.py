@@ -63,4 +63,4 @@ metadata = {
 logger.info(metadata)
 
 # mark evaluation as finished
-torch.save(datetime.datetime.now().time(), OUT_DIR + '/results/' + '/finished_plot.pt')
+torch.save(datetime.datetime.now().time(), OUT_DIR + '/results/' + 'finished_plot.pt')

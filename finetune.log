@@ -1,0 +1,91 @@
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BEST_SCCS/ for model /storage/store/kevin/local_files/exp1/pretrained_models/checkpoints/6000
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Finished generating embeddings!
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BEST_NMI/ for model /storage/store/kevin/local_files/exp1/pretrained_models/checkpoints/1500/
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Finished generating embeddings!
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BASELINE/ for model 
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Finished generating embeddings!
+Running eval.sh at /storage/store/kevin/local_files/exp1//BEST_SCCS/
+Generating NMI data!
+Found finished, skipping eval_NMI.py!
+Finished generating NMI data!
+Generating SCCS data!
+Found finished, skipping eval_SCCS.py!
+Finished generating SCCS data!
+Generating F1 scores!
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BEST_SCCS/ for model /storage/store/kevin/local_files/exp1/pretrained_models/checkpoints/6000
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Finished generating embeddings!
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BEST_NMI/ for model /storage/store/kevin/local_files/exp1/pretrained_models/checkpoints/1500/
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Finished generating embeddings!
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BASELINE/ for model 
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Finished generating embeddings!
+Running eval.sh at /storage/store/kevin/local_files/exp1//BEST_SCCS/
+Generating NMI data!
+Found finished, skipping eval_NMI.py!
+Finished generating NMI data!
+Generating SCCS data!
+Found finished, skipping eval_SCCS.py!
+Finished generating SCCS data!
+Generating F1 scores!
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BEST_SCCS/ for model /storage/store/kevin/local_files/exp1/pretrained_models/checkpoints/6000
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Finished generating embeddings!
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BEST_NMI/ for model /storage/store/kevin/local_files/exp1/pretrained_models/checkpoints/1500/
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Finished generating embeddings!
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BASELINE/ for model 
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Finished generating embeddings!
+Running eval.sh at /storage/store/kevin/local_files/exp1/
+Generating NMI data!
+Found finished, skipping eval_NMI.py!
+Finished generating NMI data!
+Generating SCCS data!
+Found finished, skipping eval_SCCS.py!
+Finished generating SCCS data!
+Generating F1 scores!
+Finished generating F1 scores!
+Generating boxplot!
+Finished generating boxplot!
+/storage/store/kevin/local_files/exp1//BEST_SCCS/ completed at time: 2023-07-20 17:52:42
+Running eval.sh at /storage/store/kevin/local_files/exp1/
+Generating NMI data!
+Found finished, skipping eval_NMI.py!
+Finished generating NMI data!
+Generating SCCS data!
+Found finished, skipping eval_SCCS.py!
+Finished generating SCCS data!
+Generating F1 scores!
+Finished generating F1 scores!
+Generating boxplot!
+Finished generating boxplot!
+/storage/store/kevin/local_files/exp1//BEST_NMI/ completed at time: 2023-07-20 18:06:10
+Running eval.sh at /storage/store/kevin/local_files/exp1/
+Generating NMI data!
+Found finished, skipping eval_NMI.py!
+Finished generating NMI data!
+Generating SCCS data!
+Found finished, skipping eval_SCCS.py!
+Finished generating SCCS data!
+Generating F1 scores!
+Finished generating F1 scores!
+Generating boxplot!
+Finished generating boxplot!
+/storage/store/kevin/local_files/exp1//BASELINE/ completed at time: 2023-07-20 18:26:49
+Generating comparative plot
+Comparative plot generated
+finetune.sh completed at time: 2023-07-20 18:26:53
