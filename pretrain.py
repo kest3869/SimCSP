@@ -33,11 +33,6 @@ import load
 # environment variables
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# global variables 
-patience = 5 # if set to 1, will terminate training as soon as validation accuracy does not increase 
-time_since_last_val_improvement = 0 
-best_score = -1
-
 # breaks the input data into 400 nucleotide sequences 
 def chunk(data):
     chunks = []
@@ -48,53 +43,9 @@ def chunk(data):
 
 # logs callback information during pre-training and performs early stopping
 def callbacks(score, epoch, steps):
-
-    global time_since_last_val_improvement 
-    global best_score
-    global patience 
-
     # save information in logger 
-    logger.info("Score from model.fit call")
+    logger.info("Score")
     logger.info({'score':score, 'epoch':epoch, 'steps':steps})
-
-    if score > best_score:
-        best_score = score
-        time_since_last_val_improvement = 0
-        logger.info("Validation accuracy has improved!")
-        logger.info("best_score", best_score)
-    else:
-        time_since_last_val_improvement += 1
-        logger.info("validation accuracy has not improved")
-        logger.info("time since last val improvement", time_since_last_val_improvement)
-        logger.info("best_score", best_score)
-
-    # end training if run out of patience 
-    if time_since_last_val_improvement >= patience:
-        logger.info("early stopping at steps", steps)
-        logger.info("patience: ", patience)
-        # Save hyperparameter info to the logger
-        metadata = {
-            'learning_rate': learning_rate,
-            'weight_decay' : wd,
-            'batch_size': batch_size,
-            'num_epochs': num_epochs,
-            'evaluation step size' : 1000,
-            'optimizer': 'AdamW',
-            'patience' : patience,
-            'split_dir' : SPLIT_DIR,
-            'base model': model_path,
-            'loss':'MultipleNegativeRankings',
-            'outdir':OUT_DIR,
-            'pretrained_model': OUT_DIR + '/pretrained_models/',
-            'number examples:':len(ds),
-            'finished at time':datetime.datetime.now().time()
-        }
-
-        # mark training as finished
-        torch.save(datetime.datetime.now().time(), OUT_DIR + '/pretrained_models/' + 'finished_pretrain.pt')
-        logger.info('Finished with hyperparameters: %s', metadata)
-        sys.exit()
-
     return None
 
 # wraps Pyarrow dataset in Sentence Transformer class 
@@ -117,6 +68,7 @@ def callbacks(score, epoch, steps):
 # Create the argument parser
 parser = argparse.ArgumentParser(description='Pretrain model')
 parser.add_argument('--model_save_path', type=str, help='The model save path')
+parser.add_argument('--pretrained_model_path', type=str, help='The pre-trained model path')
 parser.add_argument('--batch_size', type=int, help='The batch size used')
 parser.add_argument('--learning_rate', type=float, help='The learning rate used')
 parser.add_argument('--weight_decay', type=float, help='the parameter used for weight decay')
@@ -125,6 +77,7 @@ parser.add_argument('--split_dir', type=str, help='The path to the splits')
 args = parser.parse_args()
 # Retrieve the values of the command line arguments
 OUT_DIR = args.model_save_path
+PRETRAINED_MODEL_PATH = args.pretrained_model_path
 SPLIT_DIR = args.split_dir
 batch_size = args.batch_size
 learning_rate = args.learning_rate
@@ -157,14 +110,13 @@ ds = ds.map(chunk, remove_columns=ds.column_names, batched=True)
 ds = InputDataset(ds['sequence'])
 # hyperparameters
 max_seq_len = 510
-use_cl = True 
 num_epochs = 1
+eval_bs = 16
 # define dataloader
 data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds), num_workers=4)
-# define model 
-model_path = "/storage/store/kevin/data/SpliceBERT-human.510nt/"  
+
 # build model for contrasitve learning
-word_embedding_model = models.Transformer(model_path, max_seq_length=max_seq_len)
+word_embedding_model = models.Transformer(PRETRAINED_MODEL_PATH, max_seq_length=max_seq_len)
 pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 train_loss=losses.MultipleNegativesRankingLoss(model)
@@ -198,7 +150,7 @@ for i in range(np.shape(split)[0]):
     ds_prepped = split_spliceator.prep_val_data(Subset(ds_eval, split[i]), tokenizer)
     # create our evaluator (only using the first fold for sccs)
     evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_prepped,
-                                                                batch_size=16, 
+                                                                batch_size=eval_bs, 
                                                                 name='spliceator_train_split',
                                                                 show_progress_bar=True)
     evaluator_list.append(evaluator)
@@ -220,5 +172,28 @@ model.fit(
     save_best_model = True,
     callback = callbacks,
     checkpoint_save_steps = 1000,
-    checkpoint_save_total_limit = patience + 2,
+    checkpoint_save_total_limit = 1,
 )
+
+# Save hyperparameter info to the logger
+metadata = {
+    'learning_rate': learning_rate,
+    'weight_decay' : wd,
+    'batch_size': batch_size,
+    'num_epochs': num_epochs,
+    'max_seq_ln' : max_seq_len,
+    'evaluation step size' : 1000,
+    'evaluation batch size' : eval_bs,
+    'optimizer': 'AdamW',
+    'loss' : 'MultipleNegativeRankings',
+    'tokenizer used' : '/storage/store/kevin/data/tokenizer_setup',
+    'split_dir' : SPLIT_DIR,
+    'base model': PRETRAINED_MODEL_PATH,
+    'outdir': OUT_DIR,
+    'pretrained_model': OUT_DIR + '/pretrained_models/',
+    'number train examples:' : len(ds),
+    'number eval examples:': len(ds_eval),
+    'finished at time': datetime.datetime.now().time()
+}
+
+logger.info('Finished with hyperparameters: %s', metadata)

@@ -100,7 +100,6 @@ def prep_val_data(ds, tokenizer, rng_seed=42):
 
 # takes a torch subset, returns a list of its associated labels 
 def get_labels(subset):
-
     labels = []
     # get the labels 
     for index in tqdm(subset.indices, desc='getting labels'):
@@ -132,6 +131,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # Retrieve the values of the command line argument
     SPLIT_DIR = args.split_dir
+    
     # Create a logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)

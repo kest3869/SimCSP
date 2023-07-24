@@ -272,6 +272,7 @@ metadata = {
     'len(ds)': len(ds),
     'outdir':OUT_DIR + '/finetuned_models/',
     'pretrained_model_path':PRETRAINED_MODEL,
+    'split_dir' : SPLIT_DIR,
     'number examples:':len(ds),
     'time':datetime.datetime.now().time()
     }
