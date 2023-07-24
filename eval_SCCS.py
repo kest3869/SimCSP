@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 import csv
+import numpy as np
 import sys 
 import datetime
 import torch
@@ -57,12 +58,14 @@ if __name__ == "__main__":
     # Create the argument parser
     parser = argparse.ArgumentParser(description='Get_SCCS_scores')
     parser.add_argument('-p', '--out_dir', type=str, help='The model save path')
+    parser.add_argument('--for_pretrain', action='store_true', help='Use this flag for pretraining.')
     parser.add_argument('--split_dir', type=str, help='The path to the splits')
     # Parse the command line arguments
     args = parser.parse_args()
     # Retrieve the values of the command line arguments
     OUT_DIR = args.out_dir
     SPLIT_DIR = args.split_dir
+    for_pretrain = args.for_pretrain
 
     # Create a logger
     logger = logging.getLogger(__name__)
@@ -77,9 +80,6 @@ if __name__ == "__main__":
         logger.info("Found finished, skipping SCCS.")
         print("Found finished, skipping eval_SCCS.py!")
         sys.exit()
-
-    # get paths to trained models 
-    pretrained_models, temp_models = get_paths(OUT_DIR)
 
     # load tokenizer
     tokenizer = AutoTokenizer.from_pretrained('/storage/store/kevin/data/tokenizer_setup')
@@ -97,37 +97,40 @@ if __name__ == "__main__":
         max_len=400
     )
 
-    # load the split the fine-tuned model used 
-    test_split = torch.load(SPLIT_DIR + '/test_split.pt')
-    # call split_spliceator.pre_val_data to build semantic similarity dataset from subset
-    ds_prepped = split_spliceator.prep_val_data(Subset(ds,test_split[0]), tokenizer)
+    # get num folds 
+    num_folds = np.shape(torch.load(SPLIT_DIR + 'validation_split.pt'))[0]
 
-    # get pretrained scores 
-    pretrained_paths, pretrained_scores = get_SCCS_scores(pretrained_models, ds_prepped)
-    # save CSV of pretrained scores 
-    data1 = [["path", "score"]]
-    for path, score in zip(pretrained_paths, pretrained_scores):
-        data1.append([path, score])
-    with open(OUT_DIR + '/results/' + 'SCCS_results_pretrained.csv', "w", newline="") as file1:
-        writer = csv.writer(file1)
-        writer.writerows(data1)
+    if for_pretrain:
+        # load the split the fine-tuned model used 
+        split = torch.load(SPLIT_DIR + '/train_split.pt')
+        # get paths to models 
+        model_paths, _ = get_paths(OUT_DIR)
+    else:
+        # load the split the fine-tuned model used 
+        split = torch.load(SPLIT_DIR + '/test_split.pt')
+        # get paths to models 
+        _, model_paths = get_paths(OUT_DIR)
 
-    # we only get the model paths for the first fold of the fine-tuned models 
-    finetuned_models = []
-    for p in temp_models:
-        # only use the first fold of fine-tune
-        if 'fold0' in p:
-            finetuned_models.append(p)
+    # calculates the paths and scores 
+    paths, scores = [], []
+    for i in range(num_folds):
+        # call split_spliceator.pre_val_data to build semantic similarity dataset from subset
+        ds_prepped = split_spliceator.prep_val_data(Subset(ds, split[i]), tokenizer)
+        # get scores 
+        paths_temp, scores_temp = get_SCCS_scores(model_paths, ds_prepped)
+        paths.append(paths_temp)
+        scores.append(scores_temp)  # Append scores_temp as well
 
-    # get finetuned scores 
-    finetuned_paths, finetuned_scores = get_SCCS_scores(finetuned_models, ds_prepped)
-    data2 = [["path", "score"]]
-    # save CSV of finetuned scores 
-    for path, score in zip(finetuned_paths, finetuned_scores):
-        data2.append([path, score])
-    with open(OUT_DIR + '/results/' + 'SCCS_results_finetuned.csv', "w", newline="") as file2:
-        writer = csv.writer(file2)
-        writer.writerows(data2)
+    # Combine paths and scores for each fold using zip and transpose
+    fold_results = list(zip(paths, scores))
+
+    # Save CSV of pretrained scores for each fold
+    with open(OUT_DIR + '/results/' + 'SCCS_results.csv', "w", newline="") as file:
+        writer = csv.writer(file) 
+        writer.writerow(['Path', 'Score'])  # Write header
+        for path, score in fold_results:
+            for p, s in zip(path, score):
+                writer.writerow([p, s])
 
     # mark evaluation as finished
-    torch.save(datetime.datetime.now().time(), OUT_DIR + '/results/' + '/finished_SCCS.pt')
+    torch.save(str(for_pretrain), OUT_DIR + '/results/' + '/finished_SCCS.pt')

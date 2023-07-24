@@ -1,0 +1,20 @@
+Made SPLIT_DIR at /storage/store/kevin/local_files/exp2//SPLITS/
+Finished splitting! Splits saved at /storage/store/kevin/local_files/exp2//SPLITS/
+Running pretrain.sh
+Starting pre-training!
+pretrain.py for /storage/store/kevin/local_files/exp2//512+0.00003+0.01 completed at time: 2023-07-23 08:06:31!
+Starting pre-training!
+pretrain.py for /storage/store/kevin/local_files/exp2//512+0.00003+0.000001 completed at time: 2023-07-23 11:07:19!
+Starting pre-training!
+pretrain.py for /storage/store/kevin/local_files/exp2//512+0.0001+0.01 completed at time: 2023-07-23 14:08:12!
+Starting pre-training!
+pretrain.py for /storage/store/kevin/local_files/exp2//512+0.0001+0.000001 completed at time: 2023-07-23 17:08:20!
+Starting pre-training!
+pretrain.py for /storage/store/kevin/local_files/exp2//1024+0.00003+0.01 completed at time: 2023-07-23 18:55:59!
+Starting pre-training!
+pretrain.py for /storage/store/kevin/local_files/exp2//1024+0.00003+0.000001 completed at time: 2023-07-23 20:43:32!
+Starting pre-training!
+pretrain.py for /storage/store/kevin/local_files/exp2//1024+0.0001+0.01 completed at time: 2023-07-23 22:30:40!
+Starting pre-training!
+pretrain.py for /storage/store/kevin/local_files/exp2//1024+0.0001+0.000001 completed at time: 2023-07-24 00:17:40!
+pretrain.sh for /storage/store/kevin/local_files/exp2/ completed at time: 2023-07-24 00:17:40!

@@ -1,0 +1,14 @@
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BEST_SCCS/ for model /storage/store/kevin/local_files/exp1/pretrained_models/checkpoints/13500/
+Starting fine-tuning!
+Finished fine-tuning! Generating Embeddings
+Running eval.sh at /storage/store/kevin/local_files/exp1/
+Generating SCCS data!
+Finished generating SCCS data!
+Generating F1 scores!
+Finished generating F1 scores!
+Generating boxplot!
+Finished generating boxplot!
+/storage/store/kevin/local_files/exp1//BEST_SCCS/ completed at time: 2023-07-21 21:56:54
+Generating comparative plot
+Comparative plot generated
+finetune.sh completed at time: 2023-07-21 21:56:58

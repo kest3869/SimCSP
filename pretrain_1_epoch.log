@@ -1,0 +1,6 @@
+Made SPLIT_DIR at /storage/store/kevin/local_files/exp2//SPLITS/
+Finished splitting! Splits saved at /storage/store/kevin/local_files/exp2//SPLITS/
+Running pretrain.sh
+Starting pre-training!
+pretrain.py for /storage/store/kevin/local_files/exp2//256+0.00003+0.01 completed at time: 2023-07-22 21:56:51!
+Starting pre-training!
