@@ -50,7 +50,6 @@ class SpliceatorDataset(Dataset):
     # group : species of origin
     # label : 1 contains splice site, 0 does not contain splice site 
     # sequences : list of DNA sequences (accociated by order with label)
-    # remove_half: optional argument to randomly reduce dataset size by half (Added by Kevin Stull)
 
     # process: given filepaths, stores data in class 
     # __getitem__ : given index returns input_id, mask, label 

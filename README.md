@@ -1,9 +1,11 @@
+
 # Recreates SpliceBERT Results and Runs Small Scale SimCSP
 
 ## TODO: 
-- MLM baseline
-    - implement 2 stage pre-training
-- MLM and CL 
+- revert code to SpliceBERT style 10-fold splitting 
+- select a best hyper-parameter suite for benchmarking
+- fully train on same split used by SpliceBERT 
+- benchmark both and record results 
 
 ## EXPERIMENTS: 
 - 1: relationship between f1/sccs in pretrain and fine-tune and its affects on F1 score 
@@ -19,18 +21,8 @@
 - F1 : linear combination of precision and recall
 
 ## COMPUTE QUEUE:
-- chop 5 baseline and CL 
-    - pretrain
-    - finetune
-- chop 4 baseline and CL 
-    - pretrain
-    - finetune
-- MLM hrg baseline 
-    - pretrain
-    - finetune
-- MLM and CL 
-    - pretrain
-    - finetune
+- final model
+
 
 ## NOTES: 
 - cite UMAP and leiden algorithm + give more explanation on generation

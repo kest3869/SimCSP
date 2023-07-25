@@ -164,3 +164,4 @@ if __name__ == "__main__":
     logger.info("num_folds: " + str(num_folds))
     logger.info("seed: " + str(seed))
     logger.info("time: " + str(datetime.datetime.now().time()))
+    logger.info("split_dir: ", SPLIT_DIR)

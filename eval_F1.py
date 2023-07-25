@@ -71,8 +71,6 @@ def get_F1_scores(model_paths, ds_eval):
         # save f1 score
         f1_scores.append(f1)
     # convert lists to np.arrays
-    #f1_scores = np.array(f1_scores)
-    #model_paths = np.array(model_paths)
     return f1_scores, model_paths 
 
 # Create the argument parser
@@ -85,7 +83,7 @@ args = parser.parse_args()
 OUT_DIR = args.out_dir
 SPLIT_DIR = args.split_dir
 
-'''
+
 # Create a logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -99,7 +97,6 @@ if os.path.exists(OUT_DIR + '/results/' + '/finished_F1.pt'):
     logger.info("Found finished, skipping F1.")
     print("Found finished, skipping eval_F1.py!")
     sys.exit()
-'''
 
 # Get device
 # Check for CPU or GPU
@@ -109,12 +106,7 @@ else:
     device = torch.device("cpu")
 
 # get paths to trained models 
-_, temp_models = get_paths(OUT_DIR)
-# we only get the model paths for the first fold of the fine-tuned models 
-finetuned_models = []
-for p in temp_models:
-    if 'fold0' in p:
-        finetuned_models.append(p)
+_, finetuned_models = get_paths(OUT_DIR)
 
 # load tokenizer
 tokenizer = AutoTokenizer.from_pretrained("/storage/store/kevin/data/tokenizer_setup")
@@ -147,7 +139,6 @@ for i in range(np.shape(test_split)[0]):
     temp_f1s, temp_paths = get_F1_scores(finetuned_models, test_ds)
     paths.append(temp_paths)
     f1s.append(temp_f1s)
-
 
 # save CSV of F1 scores 
 with open(OUT_DIR + '/results/' + 'F1_results_.csv', "w", newline="") as file1:

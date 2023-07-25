@@ -134,3 +134,6 @@ if __name__ == "__main__":
 
     # mark evaluation as finished
     torch.save(str(for_pretrain), OUT_DIR + '/results/' + '/finished_SCCS.pt')
+
+
+print(model_paths)

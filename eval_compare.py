@@ -26,7 +26,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 # load csv's into df's for each version
-versions = ['BASELINE', 'BEST_NMI', 'BEST_SCCS']
+versions = ['BASELINE', 'BEST_SCCS']
 results_dfs = {}
 paths_dfs = {}
 
