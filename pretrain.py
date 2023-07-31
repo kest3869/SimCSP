@@ -48,7 +48,7 @@ def callbacks(score, epoch, steps):
     logger.info({'score':score, 'epoch':epoch, 'steps':steps})
     return None
 
-# wraps Pyarrow dataset in Sentence Transformer class 
+# wraps huggingface dataset in Sentence Transformer compatible class 
 class InputDataset:
     def __init__(self,seq):
         self.seq = seq
@@ -102,16 +102,19 @@ if os.path.exists(OUT_DIR + '/pretrained_models/' + 'finished_pretrain.pt'):
 st = datetime.datetime.now().time()
 # save start time of fitting 
 logger.info("start time:{st}".format(st=st))
-# load cached dataset
+
+# load dataset
 ds = load_dataset('InstaDeepAI/human_reference_genome', '6kbp', split='train')
 # apply the mapping function to the dataset
 ds = ds.map(chunk, remove_columns=ds.column_names, batched=True)
 # make it compatible with Sentence Transformers library                            
 ds = InputDataset(ds['sequence'])
+
 # hyperparameters
-max_seq_len = 510
-num_epochs = 1
-eval_bs = 16
+max_seq_len= 510
+num_epochs= 1
+num_steps= 250
+eval_bs= 8
 # define dataloader
 data_loader = DataLoader(ds,batch_size=batch_size,sampler=RandomSampler(ds), num_workers=4)
 
@@ -125,7 +128,7 @@ optimizer_class = AdamW
 optimizer_params =  {'lr': learning_rate,
                      'weight_decay': wd}
 
-# evaluator and dataset for eval
+# load dataset for evaluators
 tokenizer = AutoTokenizer.from_pretrained('/storage/store/kevin/data/tokenizer_setup')
 # Positive and Negative paths
 positive_dir = '/storage/store/kevin/data/spliceator/Training_data/Positive/GS'
@@ -167,12 +170,12 @@ model.fit(
     optimizer_params=optimizer_params,
     output_path= OUT_DIR + '/pretrained_models/',
     use_amp = True,
-    evaluation_steps = 1000,
+    evaluation_steps = num_steps,
     checkpoint_path = OUT_DIR+'/pretrained_models/checkpoints/',
     save_best_model = True,
     callback = callbacks,
-    checkpoint_save_steps = 1000,
-    checkpoint_save_total_limit = 1,
+    checkpoint_save_steps = num_steps,
+    checkpoint_save_total_limit = 100,
 )
 
 # Save hyperparameter info to the logger
@@ -182,7 +185,7 @@ metadata = {
     'batch_size': batch_size,
     'num_epochs': num_epochs,
     'max_seq_ln' : max_seq_len,
-    'evaluation step size' : 1000,
+    'evaluation step size' : num_steps,
     'evaluation batch size' : eval_bs,
     'optimizer': 'AdamW',
     'loss' : 'MultipleNegativeRankings',
@@ -195,5 +198,4 @@ metadata = {
     'number eval examples:': len(ds_eval),
     'finished at time': datetime.datetime.now().time()
 }
-
 logger.info('Finished with hyperparameters: %s', metadata)

@@ -110,13 +110,12 @@ tokenizer = AutoTokenizer.from_pretrained('/storage/store/kevin/data/tokenizer_s
 seed = 2023
 skip_donor_acceptor_umap = True
 dev = True
-max_pretrain_computed = 15 # the maximum number of checkpoints computed (pre-training only)
 np.random.seed(seed)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # loads data 
 ds = FiexedBedData(bed, 510, genome, tokenizer)
-batch_size = 16
+batch_size = 8
 loader = DataLoader(
     ds, 
     batch_size=batch_size, 
@@ -128,11 +127,6 @@ loader = DataLoader(
 _, finetune_paths = get_paths(OUT_DIR)
 # go through and calculate embeddings
 for path in finetune_paths: 
-
-
-    # only compute first fold of fine-tune
-    if 'fold0' not in path:
-        continue
 
     # skip if already completed 
     if os.path.exists(path + '/finished_embed_gen.pt'):
@@ -215,15 +209,10 @@ for path in finetune_paths:
     logger.info('Finished finetuned with hyperparameters: %s', metadata)
     gc.collect()
 
-computed = 0
 # list of filepaths in outdir 
 pretrain_paths, _ = get_paths(OUT_DIR)
 # go through and calculate embeddings
 for path in pretrain_paths: 
-
-    # stop don't compute the rest of the embeddings
-    if computed >= max_pretrain_computed:
-        continue
 
     # skip if already completed 
     if os.path.exists(path + '/finished_embed_gen.pt'):
@@ -289,15 +278,11 @@ for path in pretrain_paths:
         sc.tl.leiden(ag_adata)
         gt_adata.write_h5ad(f"{output}.L{h}.GT.h5ad")
         ag_adata.write_h5ad(f"{output}.L{h}.AG.h5ad")
-        
-    # increment computed
-    computed += 1  
 
     # collection of metadata from embed_gen
     metadata = {
         'out_dir' : path,
         'model_path' : model,
-        'max_pretrain_computed' : max_pretrain_computed,
         'only_get_last_layer' : only_get_last_layer,
         'genome' : genome,
         'bed' : bed,

@@ -2,7 +2,6 @@
 # Recreates SpliceBERT Results and Runs Small Scale SimCSP
 
 ## TODO: 
-- revert code to SpliceBERT style 10-fold splitting 
 - select a best hyper-parameter suite for benchmarking
 - fully train on same split used by SpliceBERT 
 - benchmark both and record results 
@@ -13,7 +12,10 @@
     - uses SpliceBERT-human, evaluated using f1/sccs on spliceator and NMI on hg19
     - could be improved by using SpliceBERT and NMI on spliceator 
 - 2 - hyperparameter search over pre-train w/ SCCS validation
-- 3: experiment with chopping off k layers and doing CL + fine-tune on that
+- 3: experiment with chopping off 1 layers transformer and doing CL + fine-tune on that
+- 4: experiment with chopping off 2 transformer layers and doing CL + fine-tune on that
+- 5: freeze the transformer layers and only fine-tune the classifier 
+    - this will tell you if the internal representation is being improved 
 
 ## METRICS:
 - SCCS : spearman correlation w/ cosine similarity 
@@ -21,8 +23,7 @@
 - F1 : linear combination of precision and recall
 
 ## COMPUTE QUEUE:
-- final model
-
+- compute NMI for chop-k results
 
 ## NOTES: 
 - cite UMAP and leiden algorithm + give more explanation on generation
@@ -46,8 +47,11 @@
 - use middle transformer layers 
 - use mean pooling across some linear combination of hidden layers 
 
+## STORY
+__(character)__ needed _____ because _____ but _____ so _____  finally ____
+
 ## IDEAS: 
-- experiment with training the classification head with frozen transformer layers first
-- use a splice site location tool to generate a better MLM training set (or microsoft paper idea)
-- use a MLM and CL loss function together during pre-train
-- explore Sup. CL
+- train models with frozen classiier layers to evaluate the quality of the embeddings (inspect quality of pre-trained embeddings)
+- use a MLM and CL loss function together during pre-train (multiple loss functions)
+- use a splice site location tool to generate a better MLM training set w/ sup. simCSP (synthetic data and sup. CL)
+- look for papers that used CL to improve performance on the SUBJ dataset (b/c it is a binary classification task)

@@ -78,10 +78,6 @@ for path in pretrain_paths:
 # looping through finetuned paths and generating NMI scores
 for path in finetune_paths:
 
-    # only use the first fold of fine-tune
-    if 'fold0' not in path:
-        continue
-
     # builds path to pre-computed embedding
     path = path + '/' + label + '.L6.h5ad'
 

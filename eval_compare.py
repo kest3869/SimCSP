@@ -26,10 +26,9 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 # load csv's into df's for each version
-versions = ['BASELINE', 'BEST_SCCS']
+versions = ['BASELINE', 'BEST_SCCS', 'BEST_NMI']
 results_dfs = {}
 paths_dfs = {}
-
 for version in versions:
     results_path = OUT_DIR + '/' + version + '/' + '/results/F1_results_.csv'
     paths_path = OUT_DIR + '/' + version + '/' + '/results/F1_paths_.csv'
@@ -66,7 +65,7 @@ for i, version in enumerate(versions):
 
 # Set the same y-axis limits for all subplots
 for ax in axes:
-    ax.set_ylim(0.975, max_f1_score)
+    ax.set_ylim(0.960, max_f1_score)
 
 # Save the entire figure with all three subplots
 plt.savefig(os.path.join(OUT_DIR, 'results', "F1_score_compare.png"))

@@ -33,7 +33,7 @@ layer=args.layer
 # logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-log_file = os.path.join(OUT_DIR, "_plot_data.txt")
+log_file = os.path.join(OUT_DIR, "embed_plot.log")
 file_handler = logging.FileHandler(log_file)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)

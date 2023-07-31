@@ -1,0 +1,23 @@
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BEST_SCCS/ for model 
+Starting fine-tuning!
+Finished fine-tuning!
+Running finetune.sh at /storage/store/kevin/local_files/exp1//BASELINE/ for model 
+Starting fine-tuning!
+Finished fine-tuning!
+Running eval.sh at /storage/store/kevin/local_files/exp1/
+Generating F1 scores!
+Found finished, skipping eval_F1.py!
+Finished generating F1 scores!
+Generating boxplot!
+Found finished, skipping eval_plot.py!
+Finished generating boxplot!
+/storage/store/kevin/local_files/exp1//BEST_SCCS/ completed at time: 2023-07-25 22:11:06
+Running eval.sh at /storage/store/kevin/local_files/exp1/
+Generating F1 scores!
+Found finished, skipping eval_F1.py!
+Finished generating F1 scores!
+Generating boxplot!
+Found finished, skipping eval_plot.py!
+Finished generating boxplot!
+/storage/store/kevin/local_files/exp1//BASELINE/ completed at time: 2023-07-25 22:11:13
+finetune.sh completed at time: 2023-07-25 22:11:17

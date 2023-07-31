@@ -1,4 +1,27 @@
 
+'''
+START OF CITATION
+
+Author: Ken Chen
+Email: chenkenbio@gmail.com
+
+CODE ADAPTED FROM: 
+https://github.com/biomed-AI/SpliceBERT/blob/main/examples/04-splicesite-prediction/spliceator_data.py
+
+ORIGINAL MANUSCRIPT: 
+@article{Chen2023.01.31.526427,
+	author = {Chen, Ken and Zhou, Yue and Ding, Maolin and Wang, Yu and Ren, Zhixiang and Yang, Yuedong},
+	title = {Self-supervised learning on millions of pre-mRNA sequences improves sequence-based RNA splicing prediction},
+	year = {2023},
+	doi = {10.1101/2023.01.31.526427},
+	publisher = {Cold Spring Harbor Laboratory},
+	URL = {https://www.biorxiv.org/content/early/2023/02/03/2023.01.31.526427},
+	journal = {bioRxiv}
+}
+
+ADAPTED BY Kevin Stull
+'''
+
 # Mandatory
 import os
 import sys 
@@ -92,7 +115,7 @@ else:
 # Display device being used for train.py
 logger.info(f"Using {device}")
 
-# Hyperparameters (all parts of training)
+# Hyperparameters 
 num_folds = 5 # K in StratifiedKFold
 num_train_epochs = 200 # Max number of training epochs for each model 
 bs = 16 # batch size used to train the model [Default 16]
@@ -104,9 +127,7 @@ patience = 5 # num iterations a model will train without improvements to val_auc
 max_len = 400 # max length of input string 
 
 # load tokenizer
-tokenizer = AutoTokenizer.from_pretrained(PRETRAINED_MODEL)
-
-# Load dataset
+tokenizer = AutoTokenizer.from_pretrained("/storage/store/kevin/data/tokenizer_setup/")
 # Positive and Negative paths
 positive_dir = '/storage/store/kevin/data/spliceator/Training_data/Positive/GS'
 negative_dir = '/storage/store/kevin/data/spliceator/Training_data/Negative/GS/GS_1'

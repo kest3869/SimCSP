@@ -46,7 +46,7 @@ def test_model(model: AutoModelForSequenceClassification, loader: DataLoader):
     return auc_list, f1, pred, true
 
 # return a list of F1 scores given a list of models and a dataset
-def get_F1_scores(model_paths, ds_eval):
+def get_F1_scores(all_paths, ds_eval, fold):
     """
     Input:
     - model_paths : a list of models for sequence classification
@@ -55,23 +55,35 @@ def get_F1_scores(model_paths, ds_eval):
     - f1_scores : a list of F1 scores as a np.array
     - model_paths : a list of paths used to generate the models as a np.array
     """
+
     f1_scores = []
+    model_paths = []
     # get F1 scores for all models in model paths 
-    for model_path in model_paths:
-        # initialize the dataloader 
-        val_loader = DataLoader(
-            ds_eval,
-            batch_size=8,
-            num_workers=4
-        )
-        # load pre-trained model 
-        model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=1).to(device)
-        # get f1_score 
-        _, f1, _, _ = test_model(model, val_loader)
-        # save f1 score
-        f1_scores.append(f1)
+    for model_path in all_paths:
+        # onlu perform inference for that folds data 
+        if ("fold" + str(fold)) in model_path:
+            # initialize the dataloader 
+            val_loader = DataLoader(
+                ds_eval,
+                batch_size=8,
+                num_workers=4
+            )
+            # load pre-trained model 
+            print()
+            print("RUNNING INFERENCE FOR:", model_path)
+            print()
+            model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=1).to(device)
+            # get f1_score 
+            _, f1, _, _ = test_model(model, val_loader)
+            print()
+            print("FINISHED INFERENCE FOR:", model_path)
+            print()
+            # save f1 score
+            f1_scores.append(f1)
+            model_paths.append(model_path)
+
     # convert lists to np.arrays
-    return f1_scores, model_paths 
+    return f1_scores, model_paths
 
 # Create the argument parser
 parser = argparse.ArgumentParser(description='Get_F1_scores')
@@ -82,7 +94,6 @@ args = parser.parse_args()
 # Retrieve the values of the command line arguments
 OUT_DIR = args.out_dir
 SPLIT_DIR = args.split_dir
-
 
 # Create a logger
 logger = logging.getLogger(__name__)
@@ -97,9 +108,8 @@ if os.path.exists(OUT_DIR + '/results/' + '/finished_F1.pt'):
     logger.info("Found finished, skipping F1.")
     print("Found finished, skipping eval_F1.py!")
     sys.exit()
-
+    
 # Get device
-# Check for CPU or GPU
 if torch.cuda.is_available():
     device = torch.device("cuda")
 else:
@@ -132,11 +142,12 @@ f1s = []
 paths = []
 mean_f1s = []
 # loop through each fold
-for i in range(np.shape(test_split)[0]):
-    # get correct subset of ds for fold i
-    test_ds = Subset(ds, test_split[i])
+for fold in range(np.shape(test_split)[0]):
+    # get correct subset of ds for each fold 
+    test_ds = Subset(ds, test_split[fold])
     # calculate F1 scores
-    temp_f1s, temp_paths = get_F1_scores(finetuned_models, test_ds)
+    temp_f1s, temp_paths = get_F1_scores(finetuned_models, test_ds, fold)
+    print("finished fold:", fold)
     paths.append(temp_paths)
     f1s.append(temp_f1s)
 

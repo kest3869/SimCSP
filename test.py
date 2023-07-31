@@ -17,7 +17,6 @@ ORIGINAL MANUSCRIPT:
 }
 
 ADAPTED BY Kevin Stull
-Code is derivative of (Cited Author) unless otherwise stated. 
 '''
 
 # Mandatory 

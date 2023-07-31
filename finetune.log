@@ -1,18 +1,5 @@
 Running finetune.sh at /storage/store/kevin/local_files/exp3//BEST_SCCS/ for model /storage/store/kevin/local_files/exp3/chop-1/pretrained_models/
 Starting fine-tuning!
-Finished fine-tuning! Generating Embeddings
-Finished generating embeddings!
-Running finetune.sh at /storage/store/kevin/local_files/exp3//BASELINE/ for model /storage/store/kevin/local_files/exp3/chop-1/pretrained_models/
-Starting fine-tuning!
-Running finetune.sh at /storage/store/kevin/local_files/exp3//BEST_SCCS/ for model /storage/store/kevin/local_files/exp3/chop-1/pretrained_models/
-Starting fine-tuning!
-Finished fine-tuning! Generating Embeddings
-Running finetune.sh at /storage/store/kevin/local_files/exp3//BASELINE/ for model /storage/store/kevin/local_files/exp3/chop-1/pretrained_models/
-Starting fine-tuning!
-Running eval.sh at /storage/store/kevin/local_files/exp3/
-Generating F1 scores!
-Running finetune.sh at /storage/store/kevin/local_files/exp3//BEST_SCCS/ for model /storage/store/kevin/local_files/exp3/chop-1/pretrained_models/
-Starting fine-tuning!
-Finished fine-tuning! Generating Embeddings
+Finished fine-tuning!
 Running finetune.sh at /storage/store/kevin/local_files/exp3//BASELINE/ for model /storage/store/kevin/local_files/exp3/chop-1/pretrained_models/
 Starting fine-tuning!

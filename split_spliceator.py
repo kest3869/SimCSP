@@ -21,7 +21,7 @@ def split_spliceator(labels, OUT_DIR, num_folds=5, rng_seed=42):
     - train_split, validation_split, test-split : (num_folds, 1) lists each containing indices from original ds 
     '''
 
-    # create a 5-fold cross validator 
+    # create a k-fold cross validator 
     skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=rng_seed)
     # generate folds for dataset
         # default behavior: (80/20) : (train/test)
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     # Retrieve the values of the command line argument
     SPLIT_DIR = args.split_dir
     
-    # Create a logger
+    # create a logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     file_handler = logging.FileHandler(SPLIT_DIR + 'split.log')
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     num_folds = 5 # K in StratifiedKFold
     seed = np.random.randint(1, 1E5) # random value used to generate splits
     
-    # Load dataset
+    # load dataset
     tokenizer = AutoTokenizer.from_pretrained('/storage/store/kevin/data/tokenizer_setup')
     positive_dir = '/storage/store/kevin/data/spliceator/Training_data/Positive/GS'
     negative_dir = '/storage/store/kevin/data/spliceator/Training_data/Negative/GS/GS_1'
@@ -164,4 +164,4 @@ if __name__ == "__main__":
     logger.info("num_folds: " + str(num_folds))
     logger.info("seed: " + str(seed))
     logger.info("time: " + str(datetime.datetime.now().time()))
-    logger.info("split_dir: ", SPLIT_DIR)
+    logger.info("split_dir: " + SPLIT_DIR)
