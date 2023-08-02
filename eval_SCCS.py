@@ -19,7 +19,7 @@ from get_paths import get_paths
 import load
 
 # return a list of SCCS scores and associated file paths 
-def get_SCCS_scores(model_paths, ds_eval):
+def get_SCCS_scores(model_paths, ds_eval, fold_num):
     '''
     Inputs: 
     - models : a list of filepaths to trained models 
@@ -35,22 +35,22 @@ def get_SCCS_scores(model_paths, ds_eval):
 
     # get sccs scores for all models in model paths 
     for model_path in model_paths:
+        if ("fold" + str(fold_num)) in model_path:
+            # initialize the model to be evaluated
+            word_embedding_model = models.Transformer(model_path, max_seq_length=400)
+            pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
+            model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 
-        # initialize the model to be evaluated
-        word_embedding_model = models.Transformer(model_path, max_seq_length=400)
-        pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(), pooling_mode='cls')
-        model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
-
-        # create our evaluator (only using the first fold for sccs)
-        evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_eval, 
-                                                                    batch_size=8, 
-                                                                    name='spliceator_test_split',
-                                                                    show_progress_bar=True)
-        # pass the model through the evaluator 
-        sccs = evaluator(model)
-        # save the evaluation information
-        sccs_scores.append(sccs)
-        sccs_model_paths.append(model_path)
+            # create our evaluator (only using the first fold for sccs)
+            evaluator = EmbeddingSimilarityEvaluator.from_input_examples(ds_eval, 
+                                                                        batch_size=8, 
+                                                                        name='spliceator_test_split',
+                                                                        show_progress_bar=True)
+            # pass the model through the evaluator 
+            sccs = evaluator(model)
+            # save the evaluation information
+            sccs_scores.append(sccs)
+            sccs_model_paths.append(model_path)
 
     return sccs_model_paths, sccs_scores
 
@@ -80,6 +80,7 @@ if __name__ == "__main__":
         logger.info("Found finished, skipping SCCS.")
         print("Found finished, skipping eval_SCCS.py!")
         sys.exit()
+
 
     # load tokenizer
     tokenizer = AutoTokenizer.from_pretrained('/storage/store/kevin/data/tokenizer_setup')
@@ -117,7 +118,7 @@ if __name__ == "__main__":
         # call split_spliceator.pre_val_data to build semantic similarity dataset from subset
         ds_prepped = split_spliceator.prep_val_data(Subset(ds, split[i]), tokenizer)
         # get scores 
-        paths_temp, scores_temp = get_SCCS_scores(model_paths, ds_prepped)
+        paths_temp, scores_temp = get_SCCS_scores(model_paths, ds_prepped, i)
         paths.append(paths_temp)
         scores.append(scores_temp)  # Append scores_temp as well
 
@@ -134,6 +135,3 @@ if __name__ == "__main__":
 
     # mark evaluation as finished
     torch.save(str(for_pretrain), OUT_DIR + '/results/' + '/finished_SCCS.pt')
-
-
-print(model_paths)

@@ -51,6 +51,10 @@ for i, version in enumerate(versions):
     patience = 5  # the patience used when fine-tuning the model
     best_model_idx = np.shape(results_df)[1] - patience
 
+    # Calculate mean
+    mean_f1 = np.mean(results_df.iloc[:, best_model_idx])
+    print(f"Mean F1 Score for {version}: {mean_f1}")
+
     # Make boxplot
     axes[i].boxplot(results_df.iloc[:, best_model_idx])
 

@@ -1,8 +1,0 @@
-Running finetune.sh at /storage/store/kevin/local_files/exp1//BEST_SCCS/ for model 
-Starting fine-tuning!
-Finished fine-tuning!
-Running finetune.sh at /storage/store/kevin/local_files/exp1//BASELINE/ for model 
-Starting fine-tuning!
-Finished fine-tuning!
-Running eval.sh at /storage/store/kevin/local_files/exp1/
-Generating F1 scores!

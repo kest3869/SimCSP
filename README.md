@@ -2,9 +2,9 @@
 # Recreates SpliceBERT Results and Runs Small Scale SimCSP
 
 ## TODO: 
-- select a best hyper-parameter suite for benchmarking
-- fully train on same split used by SpliceBERT 
 - benchmark both and record results 
+- reproduce NMI results on labelled movie reviews dataset 
+- get SCCS and NMI SpliceBERT 
 
 ## EXPERIMENTS: 
 - 1: relationship between f1/sccs in pretrain and fine-tune and its affects on F1 score 
@@ -55,3 +55,4 @@ __(character)__ needed _____ because _____ but _____ so _____  finally ____
 - use a MLM and CL loss function together during pre-train (multiple loss functions)
 - use a splice site location tool to generate a better MLM training set w/ sup. simCSP (synthetic data and sup. CL)
 - look for papers that used CL to improve performance on the SUBJ dataset (b/c it is a binary classification task)
+

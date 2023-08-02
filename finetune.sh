@@ -79,11 +79,12 @@ for OUT_DIR_TEMP in "${OUT_DIRS[@]}"; do
   python eval_boxplot.py --out_dir "${OUT_DIR_TEMP}"
   echo "Finished generating boxplot!"
 
-  # generate results for NMI and SCCS 
+  # generate results for SCCS 
   echo "Getting SCCS Results"
-  python eval_SCCS.py --out_dir "${OUT_DIR_TEMP}" --split_dir "${SPLIT_DIR}"
+  #python eval_SCCS.py --out_dir "${OUT_DIR_TEMP}" --split_dir "${SPLIT_DIR}"
   echo "Done getting SCCS Results!"
 
+  # generate results for NMI 
   echo "Getting NMI Results"
   python eval_NMI.py --out_dir "${OUT_DIR_TEMP}" --layer "Last"
   echo "Done getting NMI results"
@@ -92,6 +93,7 @@ for OUT_DIR_TEMP in "${OUT_DIRS[@]}"; do
   echo "${OUT_DIR_TEMP} completed at time: ${current_datetime}"
 done
 
+# generate a comparative boxplot between the three models
 python eval_compare.py --out_dir "${OUT_DIR}"
 current_datetime=$(date +"%Y-%m-%d %H:%M:%S")
 echo "finetune.sh completed at time: ${current_datetime}"

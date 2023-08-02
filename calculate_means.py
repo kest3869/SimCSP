@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-CSV_PATH = "/storage/store/kevin/local_files/exp1/results/SCCS_results.csv"
+CSV_PATH = "/storage/store/kevin/local_files/exp5/BASELINE/results/SCCS_results.csv"
 
 raw_data = pd.read_csv(CSV_PATH)
 num_folds = 5
@@ -25,9 +25,7 @@ for i in range(num_points):
     for j in range(num_folds):
         temp.append(scores[i + num_points*j])
     means.append(np.mean(temp))
-# get the max value
-max_value = max(means)
-max_index = means.index(max_value)
-# get best SCCS data
-print("best mean SCCS score:", scores[max_index])
-print("best SCCS model", paths[max_index])
+# create a dataframe from the scores and epoch numbers
+df = pd.DataFrame({'Epoch': list(range(1, num_points+1)), 'Mean_Score': means})
+# write to csv
+df.to_csv('/storage/store/kevin/local_files/exp5/BASELINE/results/mean_scores_per_epoch_SCCS.csv', index=False)

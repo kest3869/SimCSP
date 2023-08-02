@@ -22,6 +22,9 @@ ADAPTED BY Kevin Stull
 # Mandatory 
 import os
 import numpy as np
+import pickle
+import logging
+import csv
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch.cuda.amp import autocast
@@ -32,14 +35,6 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 # Files 
 from utils import make_directory
 import load # using a load function adapted by Kevin Stull 
-
-# Optional 
-import sys
-import pickle
-import argparse
-import pandas as pd
-import torch.nn.functional as F
-from utils import make_logger, get_run_info
 
 @torch.no_grad()
 @autocast()
@@ -67,8 +62,6 @@ def test_model(model: AutoModelForSequenceClassification, loader: DataLoader):
     f1 = f1_score(true.T, pred.T > 0.5)
     return auc_list, f1, pred, true 
 
-
-
 if __name__ == "__main__":
 
     # get device 
@@ -76,63 +69,102 @@ if __name__ == "__main__":
     print("Using", device)
 
     # Filepath to model initialization parameters 
-    SPLICEBERT_PATH = os.getcwd() + "/SpliceBERT.510nt"
-    # Specify the directory path
-    positive_dir = os.getcwd() + '/spliceator/Benchmarks/Danio/Positive'
-    negative_dir = os.getcwd() + '/spliceator/Benchmarks/Danio/Negative'
-    # List all files in the directory
-    positive_files = [os.path.join(positive_dir, file) for file in os.listdir(positive_dir)]
-    negative_files = [os.path.join(negative_dir, file) for file in os.listdir(negative_dir)]
-
-    # Path to best model (currently the best version of only fold0 model) 
-    BEST_MODEL_PATH = os.getcwd() + '/results/fold0/' + 'checkpoint.pt.best_model.pt' 
-
-    # Inference Out Directory
-    INFERENCE_OUT_PATH = os.getcwd() + "/inference"
+    species = ['Danio', 'Fly', 'Thaliana', 'Worm']
+    folds = range(5)
 
     # initialize tokenizer 
-    tokenizer = AutoTokenizer.from_pretrained(SPLICEBERT_PATH)
+    tokenizer = AutoTokenizer.from_pretrained('/storage/store/kevin/data/tokenizer_setup')
 
     # Hyperparameters
     ml = 400 # Maximum input length 
     bs = 16 # batch size used to train the model 
     nw = 4 # number of workers used for dataset construction 
 
-    # load dataset
-    ds = load.SpliceatorDataset(
-        positive=positive_files,
-        negative=negative_files,
-        tokenizer= tokenizer,
-        max_len=ml
-    )
+    # Path to best model
+    BEST_MODEL_PATH_TEMPLATE = '/storage/store/kevin/local_files/exp5/BASELINE/finetuned_models/fold{}/checkpoint.pt.best_model.pt' 
+    # Inference Out Directory
+    INFERENCE_OUT_PATH = "/storage/store/kevin/local_files/exp5/inference/"
 
-    train_loader = DataLoader(
-        ds,
-        batch_size = bs,
-        num_workers = nw
-    )
+    # Check if the directory exists
+    if not os.path.exists(INFERENCE_OUT_PATH):
+        # If not, create the directory
+        os.makedirs(INFERENCE_OUT_PATH)
 
-    model = AutoModelForSequenceClassification.from_pretrained(SPLICEBERT_PATH, num_labels=1).to(device)
-    model.load_state_dict(torch.load(BEST_MODEL_PATH, map_location="cpu")["model"]) 
-    model.eval()
+    # Create a logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(INFERENCE_OUT_PATH + 'inference.log')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
-    # Evaluation
-    pbar = tqdm(train_loader, total=len(train_loader))
-    with torch.no_grad():
-        all_scores, all_labels = list(), list()
-        for it, (ids, mask, label) in enumerate(pbar):
-            ids, mask = ids.to(device), mask.to(device)
-            with autocast():
-                logits = model.forward(ids, attention_mask=mask).logits.squeeze(1)
-                all_scores.append(logits.detach().cpu().numpy())
-                all_labels.append(label.detach().cpu().numpy())
-    
-    all_scores = np.concatenate(all_scores)
-    all_labels = np.concatenate(all_labels)
-    pickle.dump((all_labels, all_scores), open("{}/results.pkl".format(INFERENCE_OUT_PATH), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+    # Create a new CSV file and write headers
+    with open('f1_benchmarks.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Species", "Average F1"])
 
-    auc_score = roc_auc_score(all_labels, all_scores)
-    ap_score = average_precision_score(all_labels, all_scores)
-    f1 = f1_score(all_labels, all_scores > 0.5)
+    for species_name in species:
+        f1s=[]
+        for fold in folds:
+            # Specify the directory path
+            pa = '/storage/store/kevin/data/spliceator/Benchmarks/' + species_name + '/SA_sequences_acceptor_400_Final_3.positive.txt'
+            pd = '/storage/store/kevin/data/spliceator/Benchmarks/' + species_name + '/SA_sequences_donor_400_Final_3.positive.txt'
+            na = '/storage/store/kevin/data/spliceator/Benchmarks/' + species_name + '/SA_sequences_acceptor_400_Final_3.negative.txt'
+            nd = '/storage/store/kevin/data/spliceator/Benchmarks/' + species_name + '/SA_sequences_donor_400_Final_3.negative.txt'
 
-    print("AUC/AUPR/F1: {:.4f} {:.4f} {:.4f}".format(auc_score, ap_score, f1))
+
+            # load dataset
+            ds = load.SpliceatorDataset(
+                positive=[pa, pd],
+                negative=[na, nd],
+                tokenizer= tokenizer,
+                max_len=ml
+            )
+
+            bench_loader = DataLoader(
+                ds,
+                batch_size = bs,
+                num_workers = nw
+            )
+
+            BEST_MODEL_PATH = BEST_MODEL_PATH_TEMPLATE.format(fold)
+            model = AutoModelForSequenceClassification.from_pretrained(BEST_MODEL_PATH, num_labels=1).to(device)
+            model.load_state_dict(torch.load(BEST_MODEL_PATH, map_location="cpu")["model"]) 
+            model.eval()
+
+            # Evaluation
+            pbar = tqdm(bench_loader, total=len(bench_loader))
+            with torch.no_grad():
+                all_scores, all_labels = list(), list()
+                for it, (ids, mask, label) in enumerate(pbar):
+                    ids, mask = ids.to(device), mask.to(device)
+                    with autocast():
+                        logits = model.forward(ids, attention_mask=mask).logits.squeeze(1)
+                        all_scores.append(logits.detach().cpu().numpy())
+                        all_labels.append(label.detach().cpu().numpy())
+            
+            all_scores = np.concatenate(all_scores)
+            all_labels = np.concatenate(all_labels)
+            pickle.dump((all_labels, all_scores), open("{}/results_{}_fold{}.pkl".format(INFERENCE_OUT_PATH, species_name, fold), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+            auc_score = roc_auc_score(all_labels, all_scores)
+            ap_score = average_precision_score(all_labels, all_scores)
+            f1 = f1_score(all_labels, all_scores > 0.5)
+            f1s.append(f1)
+
+            print(f"Species: {species_name}, Fold: {fold}, AUC/AUPR/F1: {auc_score:.4f} {ap_score:.4f} {f1:.4f}")
+        f1_final = np.mean(f1s)
+        print("F1_final for species", species_name, f1_final)
+        logger.info("F1_final for species" + species_name + str(f1_final))
+        # Write the species name and average f1 score to the CSV file
+        with open('f1_benchmarks.csv', 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([species_name, f1_final])
+
+    metadata = {
+        'pretrained_model': BEST_MODEL_PATH_TEMPLATE, 
+        'max_input_length': ml,  
+        'batch_size': bs, 
+    }
+
+    logger.info(metadata)
