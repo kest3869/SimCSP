@@ -1,6 +1,9 @@
 
 # Simple Contrastive Splice Site Prediction
 
+## Results
+Results and visualizations can be found under results/exp2
+
 ## EXPERIMENTS: 
 - 1: relationship between f1/sccs in pretrain and fine-tune and its affects on F1 score 
     - uses the last layer's [CLS] token 
