@@ -2,7 +2,8 @@
 # Simple Contrastive Splice Site Prediction
 
 ## Reader's Note
-Results and visualizations can be found under Experimental_Results/Exp2
+- Project write up can be found in SimCSP.pdf
+- Results and visualizations can be found under Experimental_Results/Exp2
 
 ## EXPERIMENTS: 
 - 1: relationship between f1/sccs in pretrain and fine-tune and its affects on F1 score 
