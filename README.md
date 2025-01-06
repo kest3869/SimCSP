@@ -1,7 +1,7 @@
 
 # Simple Contrastive Splice Site Prediction
 
-## Results
+## Reader's Note
 Results and visualizations can be found under Experimental_Results/Exp2
 
 ## EXPERIMENTS: 
