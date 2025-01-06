@@ -2,7 +2,7 @@
 # Simple Contrastive Splice Site Prediction
 
 ## Reader's Note
-- Paper can be viewed using SimCSP.pdf
+- Paper's name in repo is SimCSP.pdf
 
 ## EXPERIMENTS: 
 - 1: relationship between f1/sccs in pretrain and fine-tune and its affects on F1 score 
